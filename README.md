@@ -38,7 +38,7 @@ Conta configurada na WhatsApp Business API (ou Twilio, para testes)
 Git instalado
 1. Clonar o repositório
 ```
-git clone https://github.com/<usuario-ou-organizacao>/<nome-do-repositorio>.git
+git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
 cd <nome-do-repositorio>
 ```
 2. Criar e ativar um ambiente virtual
