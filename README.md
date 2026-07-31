@@ -19,7 +19,7 @@ Gera relatórios em PDF com o resumo das notificações enviadas e envia por e-m
 O objetivo é reduzir os atrasos na devolução, melhorar a comunicação com os usuários e diminuir o trabalho manual da equipe da biblioteca.
 ---
 
-Tecnologias e Ferramentas Utilizadas
+Tecnologias e Ferramentas Que Serão Utilizadas
 Python — linguagem principal da automação
 PostgreSQL — banco de dados para armazenamento de livros, usuários e empréstimos
 psycopg2 / SQLAlchemy — conexão do Python com o PostgreSQL
@@ -40,43 +40,4 @@ Git instalado
 ```
 git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
 cd Trabalho-biblioteca
-```
-2. Criar e ativar um ambiente virtual
-```
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
-```
-3. Instalar as dependências
-```
-pip install -r requirements.txt
-```
-4. Configurar as variáveis de ambiente
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=biblioteca
-DB_USER=seu_usuario
-DB_PASSWORD=sua_senha
-
-WHATSAPP_API_URL=https://api.suaprovedora.com
-WHATSAPP_API_TOKEN=seu_token_aqui
-
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=seu_email@gmail.com
-EMAIL_PASSWORD=sua_senha_de_app
-```
-5. Criar o banco de dados e as tabelas
-```
-psql -U seu_usuario -d postgres -f database/schema.sql
-```
-6. Executar o projeto
-```
-python main.py
 ```
