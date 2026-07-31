@@ -39,7 +39,7 @@ Git instalado
 1. Clonar o repositório
 ```
 git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
-cd <nome-do-repositorio>
+cd Trabalho-biblioteca
 ```
 2. Criar e ativar um ambiente virtual
 ```
