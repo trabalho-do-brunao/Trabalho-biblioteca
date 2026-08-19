@@ -8,13 +8,6 @@
 -- Porta: 5432
 -- =========================================================
 
--- Execute este bloco conectado como superusuário (fora do banco "ecf"),
--- por exemplo: psql -U postgres -h localhost -p 5432
-
-CREATE DATABASE ecf;
-
--- Depois de criar o banco, conecte-se a ele antes de rodar o restante:
--- \c ecf
 
 -- =========================================================
 -- TABELA: usuarios
