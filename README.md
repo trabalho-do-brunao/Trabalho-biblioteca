@@ -45,3 +45,58 @@ Git instalado
 git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
 cd Trabalho-biblioteca
 ```
+
+
+## Lista de Tarefas do Projeto
+
+### 1. Configuração do ambiente
+- [ ] Criar repositório no GitHub
+- [ ] Configurar ambiente virtual Python (venv)
+- [ ] Criar requirements.txt com as bibliotecas do projeto
+- [ ] Criar arquivo .env.example com as variáveis necessárias (sem valores reais)
+
+### 2. Banco de dados (PostgreSQL)
+- [ ] Modelar as tabelas: livros, usuarios, emprestimos, notificacoes
+- [ ] Escrever o script schema.sql de criação das tabelas
+- [ ] Popular o banco com dados de teste (mock de livros/usuários/empréstimos)
+
+### 3. Conexão Python ↔ PostgreSQL
+- [ ] Criar módulo db.py com a conexão (psycopg2 ou SQLAlchemy)
+- [ ] Função para buscar todos os empréstimos ativos
+- [ ] Função para atualizar status de um empréstimo (ex: renovado)
+
+### 4. Lógica de verificação de prazos
+- [ ] Função que compara data atual com data de devolução
+- [ ] Classificar cada empréstimo: "em dia", "próximo do vencimento", "atrasado"
+- [ ] Montar a lista de empréstimos que precisam de notificação
+
+### 5. Integração com WhatsApp
+- [ ] Criar conta/sandbox na WhatsApp Business API (ou Twilio)
+- [ ] Criar módulo whatsapp.py para envio de mensagens
+- [ ] Criar templates de mensagem (lembrete e alerta de atraso)
+- [ ] Implementar recebimento de respostas (webhook) para comandos como "renovar"
+- [ ] Registrar cada envio na tabela notificacoes (log)
+
+### 6. Geração de relatório
+- [ ] Criar módulo relatorio.py com ReportLab ou FPDF
+- [ ] Gerar PDF com resumo das notificações enviadas no dia
+
+### 7. Envio de e-mail
+- [ ] Criar módulo email_service.py (smtplib ou biblioteca similar)
+- [ ] Enviar o PDF gerado como anexo ao responsável da biblioteca
+
+### 8. Agendamento automático
+- [ ] Configurar APScheduler (ou cron) para rodar a verificação diariamente
+- [ ] Criar main.py que orquestra todo o fluxo (conectar → verificar → notificar → relatório → e-mail)
+
+### 9. Testes
+- [ ] Testar conexão com o banco
+- [ ] Testar envio de mensagem via WhatsApp (ambiente sandbox)
+- [ ] Testar geração e envio do relatório
+- [ ] Testar o fluxo completo de ponta a ponta
+
+### 10. Documentação e entrega
+- [ ] Atualizar o README conforme o código avança
+- [ ] Comentar o código
+- [ ] Criar prints/GIF do sistema funcionando (se pedido na entrega)
+- [ ] Revisar se o fluxo do código bate com o fluxograma da Entrega 1
