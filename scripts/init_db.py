@@ -199,16 +199,18 @@ def validar_banco(conexao) -> None:
 def main() -> int:
     print("=== Inicialização do banco BiblioAvisa ===\n")
 
+    conexao = None
     try:
         config = carregar_configuracao()
         garantir_banco(config)
 
         print(f"[INFO] Conectando ao banco '{config['dbname']}'...")
-        with conectar(config, config["dbname"]) as conexao:
-            print("[OK] Conexão realizada com sucesso.")
-            preparar_estrutura(conexao)
-            executar_arquivo_sql(conexao, SEED_PATH, "dados de demonstração")
-            validar_banco(conexao)
+        conexao = conectar(config, config["dbname"])
+        print("[OK] Conexão realizada com sucesso.")
+
+        preparar_estrutura(conexao)
+        executar_arquivo_sql(conexao, SEED_PATH, "dados de demonstração")
+        validar_banco(conexao)
 
         print("\n=== Inicialização concluída com sucesso ===")
         return 0
@@ -216,6 +218,9 @@ def main() -> int:
     except (RuntimeError, psycopg2.Error) as erro:
         print(f"\n[ERRO] {erro}", file=sys.stderr)
         return 1
+    finally:
+        if conexao is not None:
+            conexao.close()
 
 
 if __name__ == "__main__":
