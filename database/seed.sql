@@ -1,6 +1,8 @@
 -- =========================================================
 -- BiblioAvisa - Dados de demonstração
 -- Execute este arquivo somente depois de database/db.sql.
+-- O arquivo foi preparado para poder ser executado novamente
+-- sem duplicar os registros principais de demonstração.
 -- =========================================================
 
 BEGIN;
@@ -50,7 +52,7 @@ WHERE u.telefone = '5542999990001'
       FROM emprestimos e
       WHERE e.usuario_id = u.id
         AND e.livro_id = l.id
-        AND e.data_emprestimo = CURRENT_DATE - 10
+        AND e.data_devolucao IS NULL
   );
 
 -- Empréstimo que vence amanhã, usado para testes da automação.
@@ -75,7 +77,7 @@ WHERE u.telefone = '5542999990002'
       FROM emprestimos e
       WHERE e.usuario_id = u.id
         AND e.livro_id = l.id
-        AND e.data_emprestimo = CURRENT_DATE - 5
+        AND e.data_devolucao IS NULL
   );
 
 -- Empréstimo em dia.
@@ -100,7 +102,7 @@ WHERE u.telefone = '5542999990003'
       FROM emprestimos e
       WHERE e.usuario_id = u.id
         AND e.livro_id = l.id
-        AND e.data_emprestimo = CURRENT_DATE - 2
+        AND e.data_devolucao IS NULL
   );
 
 COMMIT;
