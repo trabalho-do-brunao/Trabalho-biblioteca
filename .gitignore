@@ -1,4 +1,4 @@
-# Variáveis de ambiente
+# Variáveis de ambiente e credenciais locais
 .env
 .env.*
 !.env.example
@@ -8,22 +8,26 @@
 venv/
 env/
 
-# Cache e artefatos Python
+# Cache Python
 __pycache__/
 *.py[cod]
-*.pyo
+*$py.class
+
+# Testes e cobertura
 .pytest_cache/
-.mypy_cache/
 .coverage
 htmlcov/
 
-# IDEs e sistema operacional
+# IDEs e editores
 .vscode/
 .idea/
+
+# Sistema operacional
 .DS_Store
 Thumbs.db
 
-# Arquivos gerados pela aplicação
+# Saídas geradas
 output/
+reports/
 relatorios/
-*.log
+*.pdf
