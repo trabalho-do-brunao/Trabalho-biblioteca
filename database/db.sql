@@ -208,6 +208,12 @@ CREATE INDEX idx_mensagens_emprestimo
 CREATE INDEX idx_mensagens_data
     ON mensagens(data_mensagem);
 
+-- Evita registrar duas vezes a mesma mensagem entregue pelo provedor
+-- (por exemplo, em reenvios do webhook).
+CREATE UNIQUE INDEX uq_mensagens_identificador_externo
+    ON mensagens(identificador_externo)
+    WHERE identificador_externo IS NOT NULL;
+
 -- Evita que uma rotina automática envie o mesmo tipo de aviso
 -- várias vezes para o mesmo empréstimo no mesmo dia.
 CREATE UNIQUE INDEX uq_mensagens_aviso_diario
