@@ -23,7 +23,7 @@ INSERT INTO livros (
     quantidade_disponivel
 )
 VALUES
-    ('Dom Casmurro', 'Machado de Assis', '9788525406958', NULL, NULL, NULL, 3, 2),
+    ('Dom Casmurro', 'Machado de Assis', '9788525406958', NULL, NULL, NULL, 3, 1),
     ('1984', 'George Orwell', '9788535914849', NULL, NULL, NULL, 2, 1),
     ('O Pequeno Príncipe', 'Antoine de Saint-Exupéry', '9788595081512', NULL, NULL, NULL, 4, 4)
 ON CONFLICT (isbn) DO NOTHING;
