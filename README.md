@@ -240,7 +240,7 @@ Ao final, devem existir no schema `public` as tabelas:
 - `renovacoes`
 - `mensagens`
 
-O script não apaga tabelas ou dados existentes. Se encontrar apenas parte da estrutura esperada, ele interrompe a execução para evitar alterações destrutivas automáticas.
+O script não apaga tabelas ou dados existentes. Se encontrar apenas parte da estrutura esperada, ele interrompe a execução para evitar alterações destrutivas automáticas. Os dados de demonstração também foram preparados para não serem duplicados em execuções consecutivas.
 
 > Se o usuário PostgreSQL configurado não possuir permissão para criar bancos, crie somente o banco indicado em `DB_NAME` pelo pgAdmin uma única vez e execute novamente `python scripts/init_db.py`. As tabelas continuarão sendo criadas automaticamente pelo script.
 
@@ -265,7 +265,7 @@ O script não apaga tabelas ou dados existentes. Se encontrar apenas parte da es
 - [x] Criar tabela `renovacoes`
 - [x] Criar tabela `mensagens`
 - [x] Separar dados de teste em `seed.sql`
-- [ ] Validar `db.sql` e `seed.sql` em uma instalação PostgreSQL local
+- [ ] Validar `db.sql`, `seed.sql` e `scripts/init_db.py` em uma instalação PostgreSQL local
 
 ### 3. Conexão Python ↔ PostgreSQL
 
