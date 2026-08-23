@@ -18,6 +18,7 @@ dotenv.config({ path: path.join(projectRoot, '.env') })
 
 const HOST = process.env.BAILEYS_SERVICE_HOST || '127.0.0.1'
 const PORT = Number.parseInt(process.env.BAILEYS_SERVICE_PORT || '3001', 10)
+const WEBHOOK_URL = process.env.WHATSAPP_WEBHOOK_URL || 'http://127.0.0.1:3002/webhook/whatsapp'
 const authConfigurado = process.env.BAILEYS_AUTH_DIR || 'whatsapp_service/auth_info'
 const AUTH_DIR = path.isAbsolute(authConfigurado)
   ? authConfigurado
@@ -88,6 +89,100 @@ function agendarReconexao() {
   }, 3000)
 }
 
+function desembrulharMensagem(conteudo) {
+  let atual = conteudo
+
+  for (let i = 0; i < 4 && atual; i += 1) {
+    if (atual.ephemeralMessage?.message) {
+      atual = atual.ephemeralMessage.message
+      continue
+    }
+    if (atual.viewOnceMessageV2?.message) {
+      atual = atual.viewOnceMessageV2.message
+      continue
+    }
+    if (atual.viewOnceMessage?.message) {
+      atual = atual.viewOnceMessage.message
+      continue
+    }
+    break
+  }
+
+  return atual || {}
+}
+
+function extrairTextoMensagem(mensagem) {
+  const conteudo = desembrulharMensagem(mensagem?.message)
+  return String(
+    conteudo.conversation
+      ?? conteudo.extendedTextMessage?.text
+      ?? conteudo.imageMessage?.caption
+      ?? conteudo.videoMessage?.caption
+      ?? ''
+  ).trim()
+}
+
+function extrairMensagemCitadaId(mensagem) {
+  const conteudo = desembrulharMensagem(mensagem?.message)
+  return conteudo.extendedTextMessage?.contextInfo?.stanzaId ?? null
+}
+
+function extrairTelefoneMensagem(mensagem) {
+  const chave = mensagem?.key || {}
+  const jid = chave.remoteJidAlt || chave.remoteJid
+
+  if (!jid || jid === 'status@broadcast' || jid.endsWith('@g.us')) {
+    return null
+  }
+
+  const usuario = String(jid).split('@')[0].split(':')[0]
+  const digitos = usuario.replace(/\D/g, '')
+  return digitos.length >= 10 && digitos.length <= 15 ? digitos : null
+}
+
+async function encaminharMensagemAoWebhook(mensagem) {
+  if (!mensagem?.key || mensagem.key.fromMe) return
+
+  const telefone = extrairTelefoneMensagem(mensagem)
+  const texto = extrairTextoMensagem(mensagem)
+  const messageId = String(mensagem.key.id || '').trim()
+
+  if (!telefone || !texto || !messageId) return
+
+  const payload = {
+    phone: telefone,
+    message: texto,
+    message_id: messageId,
+    quoted_message_id: extrairMensagemCitadaId(mensagem),
+  }
+
+  try {
+    const resposta = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    })
+
+    let dados = {}
+    try {
+      dados = await resposta.json()
+    } catch {
+      dados = {}
+    }
+
+    if (!resposta.ok || !dados.ok) {
+      console.warn(`[AVISO] Webhook recusou mensagem recebida: ${dados.error || `HTTP ${resposta.status}`}`)
+      return
+    }
+
+    const status = dados.result?.status || 'processada'
+    console.log(`[INFO] Mensagem recebida de ${telefone} processada pelo webhook: ${status}`)
+  } catch (erro) {
+    console.warn(`[AVISO] Não foi possível encaminhar mensagem ao webhook Python: ${erro.message}`)
+  }
+}
+
 async function iniciarWhatsApp() {
   if (conectando) return
   conectando = true
@@ -137,6 +232,16 @@ async function iniciarWhatsApp() {
         agendarReconexao()
       }
     })
+
+    novoSock.ev.on('messages.upsert', ({ messages, type }) => {
+      if (type !== 'notify' || !Array.isArray(messages)) return
+
+      for (const mensagem of messages) {
+        encaminharMensagemAoWebhook(mensagem).catch((erro) => {
+          console.warn('[AVISO] Falha ao tratar mensagem recebida:', erro.message)
+        })
+      }
+    })
   } finally {
     conectando = false
   }
@@ -171,6 +276,7 @@ const servidor = http.createServer(async (req, res) => {
       provider: 'baileys',
       connected: conectado,
       state: estadoConexao,
+      webhook_url: WEBHOOK_URL,
     })
     return
   }
@@ -250,6 +356,7 @@ servidor.listen(PORT, HOST, () => {
   console.log(`[OK] Serviço Baileys local em http://${HOST}:${PORT}`)
   console.log(`[INFO] Sessão local: ${AUTH_DIR}`)
   console.log(`[INFO] Log interno do Baileys: ${LOG_LEVEL}`)
+  console.log(`[INFO] Webhook de respostas: ${WEBHOOK_URL}`)
   iniciarWhatsApp().catch((erro) => {
     estadoConexao = 'erro'
     console.error('[ERRO] Não foi possível iniciar o Baileys:', erro.message)
