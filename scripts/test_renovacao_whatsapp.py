@@ -103,7 +103,6 @@ def criar_cenario() -> dict[str, object]:
                 ),
             )
 
-            # Este aviso não foi enviado e deve desaparecer quando o prazo for renovado.
             cursor.execute(
                 """
                 INSERT INTO mensagens (
@@ -298,16 +297,41 @@ def main() -> int:
         assert recusada["envio"]["status"] == "enviado"
         print("[OK] Empréstimo atrasado foi recusado e recebeu o motivo da recusa")
 
+        conversa_comum = processar_resposta_whatsapp(
+            telefone=telefone,
+            texto="OI",
+            identificador_externo=f"entrada-conversa-{uuid.uuid4().hex}",
+            provedor=provedor,
+            data_referencia=cenario["hoje"],
+        )
+        assert conversa_comum["status"] == "ignorada_fora_do_fluxo"
+        assert conversa_comum["processada"] is False
+        assert provedor.quantidade_envios == 2
+        print("[OK] Conversa comum foi ignorada e não recebeu resposta automática")
+
+        desconhecido = processar_resposta_whatsapp(
+            telefone="5542999999999",
+            texto="RENOVAR",
+            identificador_externo=f"entrada-desconhecida-{uuid.uuid4().hex}",
+            provedor=provedor,
+            data_referencia=cenario["hoje"],
+        )
+        assert desconhecido["status"] == "ignorada_usuario_nao_cadastrado"
+        assert desconhecido["processada"] is False
+        assert provedor.quantidade_envios == 2
+        print("[OK] Número não cadastrado foi ignorado sem receber mensagem")
+
         invalida = processar_resposta_whatsapp(
             telefone=telefone,
             texto="OI",
             identificador_externo=f"entrada-invalida-{uuid.uuid4().hex}",
+            mensagem_citada_id=str(cenario["alerta_ativo"]),
             provedor=provedor,
             data_referencia=cenario["hoje"],
         )
         assert invalida["status"] == "comando_invalido"
         assert invalida["envio"]["status"] == "enviado"
-        print("[OK] Comando inválido recebeu orientação para usar RENOVAR")
+        print("[OK] Resposta inválida a um aviso recebeu orientação para usar RENOVAR")
 
         ambigua = processar_resposta_whatsapp(
             telefone=telefone,
@@ -325,7 +349,7 @@ def main() -> int:
         assert provedor.quantidade_envios == 4
         conferir_banco(cenario)
         print("[OK] Histórico, novas datas e mensagens foram persistidos corretamente")
-        print("[OK] Aviso pendente do prazo antigo foi removvido após a renovação")
+        print("[OK] Aviso pendente do prazo antigo foi removido após a renovação")
 
         print("\n=== Todos os testes de renovação passaram ===")
         return 0
