@@ -202,7 +202,7 @@ def solicitar_renovacao(
                 (nova_data, identificador),
             )
 
-            -- Reminders that have not been sent yet refer to the old due date.
+            # Avisos ainda pendentes pertencem ao prazo anterior e não devem ser enviados.
             cursor.execute(
                 """
                 DELETE FROM mensagens
