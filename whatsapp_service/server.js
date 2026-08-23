@@ -25,6 +25,11 @@ const AUTH_DIR = path.isAbsolute(authConfigurado)
   : path.resolve(projectRoot, authConfigurado)
 const LOG_LEVEL = process.env.BAILEYS_LOG_LEVEL || 'silent'
 const baileysLogger = pino({ level: LOG_LEVEL })
+const INBOUND_ENABLED = ['1', 'true', 'yes', 'sim'].includes(
+  String(process.env.WHATSAPP_INBOUND_ENABLED || 'false').trim().toLowerCase(),
+)
+const INBOUND_ALLOWED_PHONE = String(process.env.WHATSAPP_INBOUND_ALLOWED_PHONE || '').replace(/\D/g, '')
+const SERVICO_INICIADO_EM_MS = Date.now()
 
 let sock = null
 let conectado = false
@@ -129,31 +134,71 @@ function extrairMensagemCitadaId(mensagem) {
 
 function extrairTelefoneMensagem(mensagem) {
   const chave = mensagem?.key || {}
-  const jid = chave.remoteJidAlt || chave.remoteJid
+  const candidatos = [chave.remoteJidAlt, chave.remoteJid].filter(Boolean)
+  const jid = candidatos.find((valor) => String(valor).endsWith('@s.whatsapp.net'))
 
-  if (!jid || jid === 'status@broadcast' || jid.endsWith('@g.us')) {
-    return null
-  }
+  if (!jid) return null
 
   const usuario = String(jid).split('@')[0].split(':')[0]
   const digitos = usuario.replace(/\D/g, '')
   return digitos.length >= 10 && digitos.length <= 15 ? digitos : null
 }
 
+function ehComandoRenovar(texto) {
+  const normalizado = String(texto || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9À-Ú ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return ['RENOVAR', 'RENOVAR EMPRESTIMO', 'RENOVAR EMPRÉSTIMO'].includes(normalizado)
+}
+
+function timestampMensagemMs(mensagem) {
+  const valor = mensagem?.messageTimestamp
+  if (typeof valor === 'number') return valor * 1000
+  if (typeof valor === 'bigint') return Number(valor) * 1000
+  if (valor && typeof valor.toNumber === 'function') return valor.toNumber() * 1000
+
+  const numero = Number(valor)
+  return Number.isFinite(numero) ? numero * 1000 : null
+}
+
+function mensagemEhRecente(mensagem) {
+  const timestamp = timestampMensagemMs(mensagem)
+  if (!timestamp) return false
+
+  const agora = Date.now()
+  return timestamp >= SERVICO_INICIADO_EM_MS - 30_000 && timestamp <= agora + 60_000
+}
+
 async function encaminharMensagemAoWebhook(mensagem) {
+  if (!INBOUND_ENABLED) return
   if (!mensagem?.key || mensagem.key.fromMe) return
+  if (!mensagemEhRecente(mensagem)) return
 
   const telefone = extrairTelefoneMensagem(mensagem)
   const texto = extrairTextoMensagem(mensagem)
   const messageId = String(mensagem.key.id || '').trim()
+  const quotedMessageId = extrairMensagemCitadaId(mensagem)
 
   if (!telefone || !texto || !messageId) return
+
+  if (INBOUND_ALLOWED_PHONE && telefone !== INBOUND_ALLOWED_PHONE) {
+    return
+  }
+
+  // Conversas comuns não pertencem ao bot. Só encaminhamos RENOVAR ou respostas.
+  if (!ehComandoRenovar(texto) && !quotedMessageId) {
+    return
+  }
 
   const payload = {
     phone: telefone,
     message: texto,
     message_id: messageId,
-    quoted_message_id: extrairMensagemCitadaId(mensagem),
+    quoted_message_id: quotedMessageId,
   }
 
   try {
@@ -177,7 +222,7 @@ async function encaminharMensagemAoWebhook(mensagem) {
     }
 
     const status = dados.result?.status || 'processada'
-    console.log(`[INFO] Mensagem recebida de ${telefone} processada pelo webhook: ${status}`)
+    console.log(`[INFO] Mensagem de renovação recebida e processada pelo webhook: ${status}`)
   } catch (erro) {
     console.warn(`[AVISO] Não foi possível encaminhar mensagem ao webhook Python: ${erro.message}`)
   }
@@ -234,11 +279,11 @@ async function iniciarWhatsApp() {
     })
 
     novoSock.ev.on('messages.upsert', ({ messages, type }) => {
-      if (type !== 'notify' || !Array.isArray(messages)) return
+      if (!INBOUND_ENABLED || type !== 'notify' || !Array.isArray(messages)) return
 
       for (const mensagem of messages) {
         encaminharMensagemAoWebhook(mensagem).catch((erro) => {
-          console.warn('[AVISO] Falha ao tratar mensagem recebida:', erro.message)
+          console.warn('[AVISO] Falha ao tratar mensagem de renovação:', erro.message)
         })
       }
     })
@@ -277,6 +322,8 @@ const servidor = http.createServer(async (req, res) => {
       connected: conectado,
       state: estadoConexao,
       webhook_url: WEBHOOK_URL,
+      inbound_enabled: INBOUND_ENABLED,
+      inbound_allowlist_active: Boolean(INBOUND_ALLOWED_PHONE),
     })
     return
   }
@@ -357,6 +404,10 @@ servidor.listen(PORT, HOST, () => {
   console.log(`[INFO] Sessão local: ${AUTH_DIR}`)
   console.log(`[INFO] Log interno do Baileys: ${LOG_LEVEL}`)
   console.log(`[INFO] Webhook de respostas: ${WEBHOOK_URL}`)
+  console.log(`[INFO] Recebimento automático: ${INBOUND_ENABLED ? 'ATIVADO' : 'DESATIVADO'}`)
+  if (INBOUND_ENABLED) {
+    console.log(`[INFO] Filtro de telefone para entrada: ${INBOUND_ALLOWED_PHONE ? 'ATIVO' : 'NÃO CONFIGURADO'}`)
+  }
   iniciarWhatsApp().catch((erro) => {
     estadoConexao = 'erro'
     console.error('[ERRO] Não foi possível iniciar o Baileys:', erro.message)
