@@ -13,6 +13,9 @@ whatsapp_service/node_modules/
 whatsapp_service/auth_info/
 whatsapp_service/.baileys_auth/
 
+# Estado local de testes reais
+.teste_renovacao_real.json
+
 # Cache Python
 __pycache__/
 *.py[cod]

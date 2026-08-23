@@ -18,18 +18,26 @@ dotenv.config({ path: path.join(projectRoot, '.env') })
 
 const HOST = process.env.BAILEYS_SERVICE_HOST || '127.0.0.1'
 const PORT = Number.parseInt(process.env.BAILEYS_SERVICE_PORT || '3001', 10)
+const WEBHOOK_URL = process.env.WHATSAPP_WEBHOOK_URL || 'http://127.0.0.1:3002/webhook/whatsapp'
 const authConfigurado = process.env.BAILEYS_AUTH_DIR || 'whatsapp_service/auth_info'
 const AUTH_DIR = path.isAbsolute(authConfigurado)
   ? authConfigurado
   : path.resolve(projectRoot, authConfigurado)
 const LOG_LEVEL = process.env.BAILEYS_LOG_LEVEL || 'silent'
 const baileysLogger = pino({ level: LOG_LEVEL })
+const INBOUND_ENABLED = ['1', 'true', 'yes', 'sim'].includes(
+  String(process.env.WHATSAPP_INBOUND_ENABLED || 'false').trim().toLowerCase(),
+)
+const INBOUND_ALLOWED_PHONE = String(process.env.WHATSAPP_INBOUND_ALLOWED_PHONE || '').replace(/\D/g, '')
+const SERVICO_INICIADO_EM_MS = Date.now()
 
 let sock = null
 let conectado = false
 let conectando = false
 let estadoConexao = 'iniciando'
 let timerReconexao = null
+const lidParaTelefone = new Map()
+const telefonesPermitidos = new Set(INBOUND_ALLOWED_PHONE ? [INBOUND_ALLOWED_PHONE] : [])
 
 function responderJson(res, status, dados) {
   const corpo = JSON.stringify(dados)
@@ -48,6 +56,27 @@ function normalizarTelefone(telefone) {
   return digitos
 }
 
+function telefoneDeJid(jid) {
+  const texto = String(jid ?? '').trim()
+  if (!texto.endsWith('@s.whatsapp.net')) return null
+
+  const usuario = texto.split('@')[0].split(':')[0]
+  const digitos = usuario.replace(/\D/g, '')
+  return digitos.length >= 10 && digitos.length <= 15 ? digitos : null
+}
+
+function ehJidLid(jid) {
+  const texto = String(jid ?? '').trim()
+  return texto.endsWith('@lid') || texto.endsWith('@hosted.lid')
+}
+
+function registrarMapeamentoLidPn(lid, pn) {
+  const lidNormalizado = String(lid ?? '').trim()
+  const telefone = telefoneDeJid(pn)
+  if (!ehJidLid(lidNormalizado) || !telefone) return
+  lidParaTelefone.set(lidNormalizado, telefone)
+}
+
 function telefoneParaJid(telefone) {
   return `${normalizarTelefone(telefone)}@s.whatsapp.net`
 }
@@ -64,6 +93,14 @@ async function resolverDestinatario(telefone) {
 
   if (!resultado?.exists || !resultado?.jid) {
     throw new Error('O número informado não foi reconhecido como uma conta válida do WhatsApp.')
+  }
+
+  const telefoneCanonico = telefoneDeJid(resultado.jid)
+  if (telefoneCanonico) {
+    telefonesPermitidos.add(telefoneCanonico)
+  }
+  if (resultado.lid) {
+    registrarMapeamentoLidPn(resultado.lid, resultado.jid)
   }
 
   return {
@@ -88,6 +125,191 @@ function agendarReconexao() {
   }, 3000)
 }
 
+function desembrulharMensagem(conteudo) {
+  let atual = conteudo
+
+  for (let i = 0; i < 4 && atual; i += 1) {
+    if (atual.ephemeralMessage?.message) {
+      atual = atual.ephemeralMessage.message
+      continue
+    }
+    if (atual.viewOnceMessageV2?.message) {
+      atual = atual.viewOnceMessageV2.message
+      continue
+    }
+    if (atual.viewOnceMessage?.message) {
+      atual = atual.viewOnceMessage.message
+      continue
+    }
+    break
+  }
+
+  return atual || {}
+}
+
+function extrairTextoMensagem(mensagem) {
+  const conteudo = desembrulharMensagem(mensagem?.message)
+  return String(
+    conteudo.conversation
+      ?? conteudo.extendedTextMessage?.text
+      ?? conteudo.imageMessage?.caption
+      ?? conteudo.videoMessage?.caption
+      ?? ''
+  ).trim()
+}
+
+function extrairMensagemCitadaId(mensagem) {
+  const conteudo = desembrulharMensagem(mensagem?.message)
+  return conteudo.extendedTextMessage?.contextInfo?.stanzaId ?? null
+}
+
+async function resolverTelefoneMensagem(mensagem) {
+  const chave = mensagem?.key || {}
+  const candidatos = [
+    chave.remoteJidAlt,
+    chave.participantAlt,
+    chave.senderPn,
+    chave.participantPn,
+    mensagem?.senderPn,
+    mensagem?.participantPn,
+    chave.remoteJid,
+    chave.participant,
+  ].filter(Boolean)
+
+  for (const jid of candidatos) {
+    const telefone = telefoneDeJid(jid)
+    if (telefone) return telefone
+  }
+
+  const lids = candidatos.filter(ehJidLid)
+  for (const lid of lids) {
+    const emCache = lidParaTelefone.get(String(lid))
+    if (emCache) return emCache
+
+    try {
+      const pn = await sock?.signalRepository?.lidMapping?.getPNForLID?.(String(lid))
+      const telefone = telefoneDeJid(pn)
+      if (telefone) {
+        registrarMapeamentoLidPn(lid, pn)
+        return telefone
+      }
+    } catch {
+      // Se o Baileys ainda não possui esse mapa, o evento atual é ignorado com segurança.
+    }
+  }
+
+  return null
+}
+
+function ehComandoRenovar(texto) {
+  const normalizado = String(texto || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9À-Ú ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return ['RENOVAR', 'RENOVAR EMPRESTIMO', 'RENOVAR EMPRÉSTIMO'].includes(normalizado)
+}
+
+function timestampMensagemMs(mensagem) {
+  const valor = mensagem?.messageTimestamp
+  if (typeof valor === 'number') return valor * 1000
+  if (typeof valor === 'bigint') return Number(valor) * 1000
+  if (valor && typeof valor.toNumber === 'function') return valor.toNumber() * 1000
+
+  const numero = Number(valor)
+  return Number.isFinite(numero) ? numero * 1000 : null
+}
+
+function mensagemEhRecente(mensagem) {
+  const timestamp = timestampMensagemMs(mensagem)
+  if (!timestamp) return false
+
+  const agora = Date.now()
+  return timestamp >= SERVICO_INICIADO_EM_MS - 30_000 && timestamp <= agora + 60_000
+}
+
+async function encaminharMensagemAoWebhook(mensagem) {
+  if (!INBOUND_ENABLED) return
+  if (!mensagem?.key || mensagem.key.fromMe) return
+  if (!mensagemEhRecente(mensagem)) return
+
+  const texto = extrairTextoMensagem(mensagem)
+  const messageId = String(mensagem.key.id || '').trim()
+  const quotedMessageId = extrairMensagemCitadaId(mensagem)
+
+  if (!texto || !messageId) return
+
+  // Conversas comuns não pertencem ao bot. Só encaminhamos RENOVAR ou respostas.
+  if (!ehComandoRenovar(texto) && !quotedMessageId) {
+    return
+  }
+
+  let telefone = await resolverTelefoneMensagem(mensagem)
+
+  // Fallback exclusivo do teste controlado: uma resposta que cita um aviso só pode
+  // seguir sem PN resolvido quando existe exatamente um telefone autorizado.
+  // O Python ainda valida se o quoted_message_id pertence a um aviso real do banco.
+  if (!telefone && quotedMessageId && INBOUND_ALLOWED_PHONE) {
+    telefone = INBOUND_ALLOWED_PHONE
+    console.log('[INFO] Remetente veio como LID sem PN; usando o telefone autorizado do teste para validar o aviso citado.')
+  }
+
+  if (!telefone) {
+    console.log('[INFO] Mensagem de renovação ignorada: não foi possível resolver o telefone do remetente.')
+    return
+  }
+
+  if (INBOUND_ALLOWED_PHONE && !telefonesPermitidos.has(telefone)) {
+    return
+  }
+
+  // O WhatsApp pode representar a mesma conta brasileira com um PN canônico
+  // diferente do número cadastrado (por exemplo, variação do nono dígito).
+  // Depois que o remetente passou pela allowlist validada, enviamos ao Python o
+  // telefone exatamente configurado para o teste, que é a chave usada no banco.
+  if (INBOUND_ALLOWED_PHONE) {
+    if (telefone !== INBOUND_ALLOWED_PHONE) {
+      console.log('[INFO] Número canônico do WhatsApp corresponde ao telefone autorizado; usando o formato cadastrado no BiblioAvisa.')
+    }
+    telefone = INBOUND_ALLOWED_PHONE
+  }
+
+  const payload = {
+    phone: telefone,
+    message: texto,
+    message_id: messageId,
+    quoted_message_id: quotedMessageId,
+  }
+
+  try {
+    const resposta = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    })
+
+    let dados = {}
+    try {
+      dados = await resposta.json()
+    } catch {
+      dados = {}
+    }
+
+    if (!resposta.ok || !dados.ok) {
+      console.warn(`[AVISO] Webhook recusou mensagem recebida: ${dados.error || `HTTP ${resposta.status}`}`)
+      return
+    }
+
+    const status = dados.result?.status || 'processada'
+    console.log(`[INFO] Mensagem de renovação recebida e processada pelo webhook: ${status}`)
+  } catch (erro) {
+    console.warn(`[AVISO] Não foi possível encaminhar mensagem ao webhook Python: ${erro.message}`)
+  }
+}
+
 async function iniciarWhatsApp() {
   if (conectando) return
   conectando = true
@@ -106,6 +328,13 @@ async function iniciarWhatsApp() {
     sock = novoSock
     novoSock.ev.on('creds.update', saveCreds)
 
+    novoSock.ev.on('lid-mapping.update', (update) => {
+      const itens = Array.isArray(update) ? update : [update]
+      for (const item of itens) {
+        registrarMapeamentoLidPn(item?.lid, item?.pn)
+      }
+    })
+
     novoSock.ev.on('connection.update', (update) => {
       const { connection, lastDisconnect, qr } = update
 
@@ -119,6 +348,12 @@ async function iniciarWhatsApp() {
         conectado = true
         estadoConexao = 'conectado'
         console.log('[OK] WhatsApp conectado pelo Baileys.')
+
+        if (INBOUND_ENABLED && INBOUND_ALLOWED_PHONE) {
+          resolverDestinatario(INBOUND_ALLOWED_PHONE)
+            .then(() => console.log('[OK] Telefone autorizado validado pelo WhatsApp.'))
+            .catch((erro) => console.warn(`[AVISO] Não foi possível validar o telefone autorizado: ${erro.message}`))
+        }
       }
 
       if (connection === 'close') {
@@ -135,6 +370,16 @@ async function iniciarWhatsApp() {
         estadoConexao = 'desconectado'
         console.warn('[AVISO] Conexão com WhatsApp encerrada. Tentando reconectar...')
         agendarReconexao()
+      }
+    })
+
+    novoSock.ev.on('messages.upsert', ({ messages, type }) => {
+      if (!INBOUND_ENABLED || type !== 'notify' || !Array.isArray(messages)) return
+
+      for (const mensagem of messages) {
+        encaminharMensagemAoWebhook(mensagem).catch((erro) => {
+          console.warn('[AVISO] Falha ao tratar mensagem de renovação:', erro.message)
+        })
       }
     })
   } finally {
@@ -171,6 +416,9 @@ const servidor = http.createServer(async (req, res) => {
       provider: 'baileys',
       connected: conectado,
       state: estadoConexao,
+      webhook_url: WEBHOOK_URL,
+      inbound_enabled: INBOUND_ENABLED,
+      inbound_allowlist_active: Boolean(INBOUND_ALLOWED_PHONE),
     })
     return
   }
@@ -250,6 +498,11 @@ servidor.listen(PORT, HOST, () => {
   console.log(`[OK] Serviço Baileys local em http://${HOST}:${PORT}`)
   console.log(`[INFO] Sessão local: ${AUTH_DIR}`)
   console.log(`[INFO] Log interno do Baileys: ${LOG_LEVEL}`)
+  console.log(`[INFO] Webhook de respostas: ${WEBHOOK_URL}`)
+  console.log(`[INFO] Recebimento automático: ${INBOUND_ENABLED ? 'ATIVADO' : 'DESATIVADO'}`)
+  if (INBOUND_ENABLED) {
+    console.log(`[INFO] Filtro de telefone para entrada: ${INBOUND_ALLOWED_PHONE ? 'ATIVO' : 'NÃO CONFIGURADO'}`)
+  }
   iniciarWhatsApp().catch((erro) => {
     estadoConexao = 'erro'
     console.error('[ERRO] Não foi possível iniciar o Baileys:', erro.message)
