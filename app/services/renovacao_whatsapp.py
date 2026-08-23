@@ -71,8 +71,12 @@ def processar_resposta_whatsapp(
     provedor: ProvedorWhatsApp | None = None,
     data_referencia: date | None = None,
 ) -> dict[str, object]:
-    """Interpreta uma mensagem recebida e executa a renovação quando aplicável."""
-    cliente = provedor or obter_provedor_whatsapp()
+    """Interpreta somente mensagens relacionadas ao fluxo de renovação.
+
+    Conversas comuns e números não cadastrados são ignorados silenciosamente.
+    Uma mensagem inválida só recebe orientação quando foi enviada como resposta a
+    um aviso do próprio BiblioAvisa.
+    """
     conteudo = str(texto or "").strip()
     externo = str(identificador_externo or "").strip()
     citado = str(mensagem_citada_id or "").strip() or None
@@ -95,42 +99,36 @@ def processar_resposta_whatsapp(
     except ValueError:
         usuario = None
 
+    # Segurança: o BiblioAvisa não responde contatos desconhecidos da conta vinculada.
     if not usuario or not usuario.get("ativo"):
-        resposta = (
-            "Não encontrei um usuário ativo cadastrado com este número. "
-            "Procure a biblioteca para atualizar seu cadastro."
-        )
-        try:
-            envio = cliente.enviar(telefone, resposta)
-            status_envio = "enviado"
-            identificador_resposta = envio.identificador_externo
-        except Exception as erro:
-            status_envio = "falha"
-            identificador_resposta = None
-            return {
-                "status": "usuario_nao_encontrado",
-                "processada": True,
-                "resposta": resposta,
-                "envio_status": status_envio,
-                "erro_envio": str(erro),
-            }
-
         return {
-            "status": "usuario_nao_encontrado",
-            "processada": True,
-            "resposta": resposta,
-            "envio_status": status_envio,
-            "identificador_resposta": identificador_resposta,
+            "status": "ignorada_usuario_nao_cadastrado",
+            "processada": False,
         }
 
     usuario_id = int(usuario["id"])
     comando_renovar = _eh_comando_renovar(conteudo)
 
+    # Conversa comum não deve virar conversa automática do bot.
+    # Só orientamos comando inválido se o usuário respondeu a um aviso do BiblioAvisa.
     if not comando_renovar:
+        emprestimo_contexto = (
+            buscar_emprestimo_por_mensagem_externa(usuario_id, citado)
+            if citado
+            else None
+        )
+        if not emprestimo_contexto:
+            return {
+                "status": "ignorada_fora_do_fluxo",
+                "processada": False,
+            }
+
+        cliente = provedor or obter_provedor_whatsapp()
         recebida, nova = registrar_mensagem_recebida(
             usuario_id=usuario_id,
             mensagem=conteudo,
             identificador_externo=externo,
+            emprestimo_id=int(emprestimo_contexto["id"]),
             tipo="outro",
         )
         if not nova:
@@ -141,14 +139,14 @@ def processar_resposta_whatsapp(
             }
 
         resposta = (
-            "Comando não reconhecido. Para solicitar uma renovação, "
-            "responda RENOVAR ao aviso do empréstimo."
+            "Comando não reconhecido. Para solicitar a renovação deste empréstimo, "
+            "responda RENOVAR a este aviso."
         )
         saida = _enviar_resposta_registrada(
             usuario_id,
             resposta,
             "outro",
-            None,
+            int(emprestimo_contexto["id"]),
             cliente,
         )
         return {
@@ -159,6 +157,7 @@ def processar_resposta_whatsapp(
             **saida,
         }
 
+    cliente = provedor or obter_provedor_whatsapp()
     emprestimo: dict[str, object] | None = None
     motivo_sem_emprestimo: str | None = None
 
