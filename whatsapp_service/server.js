@@ -52,6 +52,26 @@ function telefoneParaJid(telefone) {
   return `${normalizarTelefone(telefone)}@s.whatsapp.net`
 }
 
+async function resolverDestinatario(telefone) {
+  if (!sock) {
+    throw new Error('WhatsApp ainda não está conectado.')
+  }
+
+  const numero = normalizarTelefone(telefone)
+  const jidConsultado = telefoneParaJid(numero)
+  const resultados = await sock.onWhatsApp(jidConsultado)
+  const resultado = Array.isArray(resultados) ? resultados[0] : null
+
+  if (!resultado?.exists || !resultado?.jid) {
+    throw new Error('O número informado não foi reconhecido como uma conta válida do WhatsApp.')
+  }
+
+  return {
+    numero,
+    jid: resultado.jid,
+  }
+}
+
 function codigoDesconexao(erro) {
   return erro?.output?.statusCode ?? erro?.statusCode ?? null
 }
@@ -155,6 +175,36 @@ const servidor = http.createServer(async (req, res) => {
     return
   }
 
+  if (req.method === 'POST' && req.url === '/check') {
+    if (!conectado || !sock) {
+      responderJson(res, 503, {
+        ok: false,
+        error: 'WhatsApp ainda não está conectado.',
+        state: estadoConexao,
+      })
+      return
+    }
+
+    try {
+      const dados = await lerJson(req)
+      const destino = await resolverDestinatario(dados.phone)
+
+      responderJson(res, 200, {
+        ok: true,
+        provider: 'baileys',
+        exists: true,
+        jid: destino.jid,
+      })
+    } catch (erro) {
+      responderJson(res, 400, {
+        ok: false,
+        exists: false,
+        error: erro.message,
+      })
+    }
+    return
+  }
+
   if (req.method === 'POST' && req.url === '/send') {
     if (!conectado || !sock) {
       responderJson(res, 503, {
@@ -167,7 +217,6 @@ const servidor = http.createServer(async (req, res) => {
 
     try {
       const dados = await lerJson(req)
-      const telefone = normalizarTelefone(dados.phone)
       const mensagem = String(dados.message ?? '').trim()
 
       if (!mensagem) {
@@ -175,13 +224,17 @@ const servidor = http.createServer(async (req, res) => {
         return
       }
 
-      const jid = telefoneParaJid(telefone)
-      const resultado = await sock.sendMessage(jid, { text: mensagem })
+      const destino = await resolverDestinatario(dados.phone)
+      const resultado = await sock.sendMessage(destino.jid, { text: mensagem })
 
       responderJson(res, 200, {
         ok: true,
         provider: 'baileys',
+        accepted: true,
+        delivered: false,
+        recipient_jid: destino.jid,
         message_id: resultado?.key?.id ?? null,
+        note: 'O retorno de sendMessage confirma aceitação pelo Baileys, não entrega ao destinatário.',
       })
     } catch (erro) {
       console.error('[ERRO] Falha ao enviar mensagem:', erro.message)
