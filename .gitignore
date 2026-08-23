@@ -1,0 +1,33 @@
+# Variáveis de ambiente e credenciais locais
+.env
+.env.*
+!.env.example
+
+# Ambientes virtuais Python
+.venv/
+venv/
+env/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testes e cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs e editores
+.vscode/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Saídas geradas
+output/
+reports/
+relatorios/
+*.pdf

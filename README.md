@@ -107,7 +107,7 @@ Relatório das atividades
 
 - **Python** — linguagem principal da aplicação e das automações;
 - **PostgreSQL** — armazenamento de usuários, livros, empréstimos, renovações e mensagens;
-- **psycopg2 ou SQLAlchemy** — conexão entre Python e PostgreSQL;
+- **psycopg2** — conexão entre Python e PostgreSQL na primeira versão;
 - **Google Books API** — busca dos dados do livro pelo ISBN;
 - **Requests** — comunicação com APIs via HTTP;
 - **WhatsApp Business API ou Twilio API for WhatsApp** — envio e recebimento de mensagens;
@@ -120,7 +120,7 @@ Relatório das atividades
 
 ---
 
-## Estrutura planejada do projeto
+## Estrutura do projeto
 
 ```text
 Trabalho-biblioteca/
@@ -134,23 +134,21 @@ Trabalho-biblioteca/
 │   ├── db.sql
 │   └── seed.sql
 │
+├── scripts/
+│   └── init_db.py
+│
 ├── app/
 │   ├── main.py
-│   ├── db.py
-│   │
+│   ├── db.py                  # será implementado na etapa de conexão da aplicação
 │   ├── services/
 │   │   ├── google_books.py
 │   │   ├── whatsapp.py
 │   │   ├── email_service.py
 │   │   └── relatorio.py
-│   │
 │   └── automation/
 │       └── verificar_prazos.py
 │
 ├── docs/
-│   ├── fluxogramas/
-│   └── imagens/
-│
 └── tests/
 ```
 
@@ -158,19 +156,93 @@ A estrutura poderá ser ajustada conforme o projeto evoluir.
 
 ---
 
-## Pré-requisitos previstos
+## Configuração inicial
+
+### Pré-requisitos
 
 - Python 3.10+
 - PostgreSQL 14+
 - Git
-- Conta/configuração para a API do WhatsApp escolhida
+- PostgreSQL em execução na máquina
 
-### Clonar o repositório
+O pgAdmin 4 pode ser utilizado para visualizar e administrar o banco, mas não precisa estar aberto para o Python executar os scripts SQL. O Python se conecta diretamente ao servidor PostgreSQL.
+
+### 1. Clonar o repositório
 
 ```bash
 git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
 cd Trabalho-biblioteca
 ```
+
+### 2. Criar e ativar o ambiente virtual no Windows
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### 3. Instalar as dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Criar o arquivo local de configuração
+
+No Windows:
+
+```bash
+copy .env.example .env
+```
+
+Edite o arquivo `.env` e informe os dados do PostgreSQL instalado na sua máquina. Exemplo:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ecf
+DB_USER=postgres
+DB_PASSWORD=sua_senha_local
+DB_MAINTENANCE_NAME=postgres
+```
+
+O arquivo `.env` está incluído no `.gitignore` e não deve ser enviado ao GitHub.
+
+### 5. Inicializar o banco automaticamente
+
+```bash
+python scripts/init_db.py
+```
+
+O script realiza automaticamente o seguinte fluxo:
+
+```text
+Lê o arquivo .env
+        ↓
+Conecta ao PostgreSQL local
+        ↓
+Verifica se DB_NAME existe
+        ↓
+Cria o banco se necessário
+        ↓
+Executa database/db.sql
+        ↓
+Executa database/seed.sql
+        ↓
+Valida as tabelas principais
+```
+
+Ao final, devem existir no schema `public` as tabelas:
+
+- `usuarios`
+- `livros`
+- `emprestimos`
+- `renovacoes`
+- `mensagens`
+
+O script não apaga tabelas ou dados existentes. Se encontrar apenas parte da estrutura esperada, ele interrompe a execução para evitar alterações destrutivas automáticas. Os dados de demonstração também foram preparados para não serem duplicados em execuções consecutivas.
+
+> Se o usuário PostgreSQL configurado não possuir permissão para criar bancos, crie somente o banco indicado em `DB_NAME` pelo pgAdmin uma única vez e execute novamente `python scripts/init_db.py`. As tabelas continuarão sendo criadas automaticamente pelo script.
 
 ---
 
@@ -179,24 +251,26 @@ cd Trabalho-biblioteca
 ### 1. Configuração do ambiente
 
 - [x] Criar repositório no GitHub
-- [ ] Configurar ambiente virtual Python (`venv`)
-- [ ] Criar `requirements.txt`
-- [ ] Criar `.env.example`
-- [ ] Criar `.gitignore`
+- [ ] Configurar ambiente virtual Python (`venv`) em cada máquina de desenvolvimento
+- [x] Criar `requirements.txt`
+- [x] Criar `.env.example`
+- [x] Criar `.gitignore`
+- [x] Criar inicializador automático `scripts/init_db.py`
 
 ### 2. Banco de dados — PostgreSQL
 
 - [x] Criar estrutura inicial do banco
 - [x] Criar tabelas `usuarios`, `livros` e `emprestimos`
-- [ ] Adequar o banco às entidades exigidas pelo BiblioAvisa
-- [ ] Criar tabela `renovacoes`
-- [ ] Criar/adequar tabela `mensagens`
-- [ ] Separar dados de teste em `seed.sql`
+- [x] Adequar o banco às entidades exigidas pelo BiblioAvisa
+- [x] Criar tabela `renovacoes`
+- [x] Criar tabela `mensagens`
+- [x] Separar dados de teste em `seed.sql`
+- [ ] Validar `db.sql`, `seed.sql` e `scripts/init_db.py` em uma instalação PostgreSQL local
 
 ### 3. Conexão Python ↔ PostgreSQL
 
-- [ ] Criar módulo `db.py`
-- [ ] Configurar conexão por variáveis de ambiente
+- [ ] Criar módulo `app/db.py`
+- [x] Preparar configuração de conexão por variáveis de ambiente
 - [ ] Buscar empréstimos ativos
 - [ ] Registrar e atualizar empréstimos
 - [ ] Registrar renovações
@@ -235,7 +309,7 @@ cd Trabalho-biblioteca
 
 - [ ] Configurar APScheduler ou alternativa equivalente
 - [ ] Executar a verificação de prazos automaticamente
-- [ ] Criar `main.py` para orquestrar o fluxo da aplicação
+- [ ] Evoluir `main.py` para orquestrar o fluxo da aplicação
 
 ### 9. Testes
 
