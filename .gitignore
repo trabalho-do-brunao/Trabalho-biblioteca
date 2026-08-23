@@ -8,6 +8,11 @@
 venv/
 env/
 
+# Dependências e sessão local do serviço WhatsApp
+whatsapp_service/node_modules/
+whatsapp_service/auth_info/
+whatsapp_service/.baileys_auth/
+
 # Cache Python
 __pycache__/
 *.py[cod]
