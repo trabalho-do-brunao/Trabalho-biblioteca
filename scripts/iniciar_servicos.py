@@ -10,18 +10,16 @@ import threading
 import time
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = PROJECT_ROOT / ".env"
+ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 WHATSAPP_DIR = PROJECT_ROOT / "whatsapp_service"
 NODE_MODULES = WHATSAPP_DIR / "node_modules"
 SERVER_JS = WHATSAPP_DIR / "server.js"
 LOG_FILTER_JS = WHATSAPP_DIR / "silenciar_logs.js"
-
-if ENV_PATH.exists():
-    load_dotenv(ENV_PATH)
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -29,18 +27,68 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.webhooks.whatsapp import criar_servidor
 
 
-def _env_ativo(nome: str, padrao: str = "false") -> bool:
-    return str(os.getenv(nome, padrao)).strip().lower() in {"1", "true", "yes", "sim"}
+def _carregar_env_local() -> dict[str, str]:
+    """Carrega somente o .env local e o torna a fonte oficial desta execução.
 
-
-def _validar_configuracao() -> tuple[bool, str]:
+    Variáveis herdadas do PowerShell podem sobreviver por toda a sessão. Para evitar
+    que uma configuração antiga do terminal habilite o listener sem aparecer no .env,
+    as opções de segurança recebem explicitamente o valor do arquivo ou o padrão seguro.
+    """
     if not ENV_PATH.exists():
         raise RuntimeError(
             "Arquivo .env não encontrado. Execute setup.bat ou copie .env.example para .env."
         )
 
-    load_dotenv(ENV_PATH)
+    valores_brutos = dotenv_values(ENV_PATH)
+    valores = {
+        str(chave): str(valor)
+        for chave, valor in valores_brutos.items()
+        if chave and valor is not None
+    }
 
+    # O .env local tem precedência sobre valores antigos herdados do terminal.
+    for chave, valor in valores.items():
+        os.environ[chave] = valor
+
+    # Segurança: ausência destas opções nunca herda um `true` antigo do PowerShell.
+    os.environ["WHATSAPP_INBOUND_ENABLED"] = valores.get(
+        "WHATSAPP_INBOUND_ENABLED", "false"
+    )
+    os.environ["WHATSAPP_INBOUND_ALLOWED_PHONE"] = valores.get(
+        "WHATSAPP_INBOUND_ALLOWED_PHONE", ""
+    )
+
+    return valores
+
+
+def _avisar_env_desatualizado(valores: dict[str, str]) -> None:
+    """Avisa quando o .env local não possui chaves presentes no modelo atual."""
+    if not ENV_EXAMPLE_PATH.exists():
+        return
+
+    exemplo = dotenv_values(ENV_EXAMPLE_PATH)
+    chaves_modelo = {str(chave) for chave in exemplo if chave}
+    faltando = sorted(chaves_modelo.difference(valores))
+
+    if not faltando:
+        return
+
+    print(
+        "[AVISO] Seu .env local está desatualizado em relação ao .env.example. "
+        "Nenhum segredo será sobrescrito automaticamente."
+    )
+    print("[AVISO] Chaves ausentes: " + ", ".join(faltando))
+    print(
+        "[AVISO] Copie apenas as chaves que faltam do .env.example para o .env "
+        "e preencha somente os valores locais necessários.\n"
+    )
+
+
+def _env_ativo(nome: str, padrao: str = "false") -> bool:
+    return str(os.getenv(nome, padrao)).strip().lower() in {"1", "true", "yes", "sim"}
+
+
+def _validar_configuracao(valores: dict[str, str]) -> tuple[bool, str]:
     inbound_ativo = _env_ativo("WHATSAPP_INBOUND_ENABLED")
     telefone_permitido = "".join(
         caractere
@@ -103,7 +151,9 @@ def _encerrar_processo(processo: subprocess.Popen[str] | None) -> None:
 
 def main() -> int:
     try:
-        inbound_ativo, telefone_permitido = _validar_configuracao()
+        valores_env = _carregar_env_local()
+        _avisar_env_desatualizado(valores_env)
+        inbound_ativo, telefone_permitido = _validar_configuracao(valores_env)
         node = _localizar_node()
         servidor = criar_servidor()
     except (RuntimeError, OSError, ValueError) as erro:
@@ -146,6 +196,7 @@ def main() -> int:
             encoding="utf-8",
             errors="replace",
             bufsize=1,
+            env=os.environ.copy(),
         )
         thread_saida = threading.Thread(
             target=_ler_saida,
