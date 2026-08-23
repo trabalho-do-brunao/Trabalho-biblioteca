@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,8 @@ from dotenv import load_dotenv
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
+MAX_TENTATIVAS = 3
+STATUS_TEMPORARIOS = {429, 500, 502, 503, 504}
 
 
 class GoogleBooksError(RuntimeError):
@@ -66,12 +69,25 @@ def _obter_api_key() -> str:
     return os.getenv("GOOGLE_BOOKS_API_KEY", "").strip()
 
 
+def _tempo_espera(resposta: requests.Response | None, tentativa: int) -> float:
+    """Calcula uma espera curta, respeitando Retry-After quando disponível."""
+    if resposta is not None:
+        retry_after = resposta.headers.get("Retry-After", "").strip()
+        if retry_after.isdigit():
+            return min(float(retry_after), 10.0)
+
+    return min(float(2 ** (tentativa - 1)), 4.0)
+
+
 def buscar_livro_por_isbn(isbn: str, timeout: float = 10.0) -> dict[str, object] | None:
     """Consulta a Google Books API e retorna os dados disponíveis para um ISBN.
 
     Retorna ``None`` quando nenhum volume é encontrado. Campos que não existem na
     resposta da API são retornados como ``None`` para que o cadastro não dependa
     da presença de todas as informações.
+
+    Erros temporários de rede ou HTTP 429/5xx são repetidos automaticamente por
+    algumas tentativas antes de a consulta ser considerada indisponível.
     """
     isbn_normalizado = normalizar_isbn(isbn)
 
@@ -85,52 +101,78 @@ def buscar_livro_por_isbn(isbn: str, timeout: float = 10.0) -> dict[str, object]
     if api_key:
         parametros["key"] = api_key
 
-    try:
-        resposta = requests.get(
-            GOOGLE_BOOKS_URL,
-            params=parametros,
-            timeout=timeout,
-        )
-    except requests.Timeout as erro:
-        raise GoogleBooksError(
-            "A consulta à Google Books API excedeu o tempo limite. Tente novamente."
-        ) from erro
-    except requests.ConnectionError as erro:
-        raise GoogleBooksError(
-            "Não foi possível estabelecer conexão com a Google Books API. "
-            "Verifique internet, DNS, proxy ou firewall."
-        ) from erro
-    except requests.RequestException as erro:
-        raise GoogleBooksError(
-            f"Falha ao enviar a requisição para a Google Books API: {type(erro).__name__}."
-        ) from erro
+    resposta: requests.Response | None = None
 
-    if resposta.status_code == 403:
-        complemento = (
-            " Configure GOOGLE_BOOKS_API_KEY no arquivo .env."
-            if not api_key
-            else " Confira se a Books API está habilitada e se a chave possui permissão."
-        )
-        raise GoogleBooksError(
-            "Google Books recusou a consulta (HTTP 403)." + complemento
-        )
-
-    if resposta.status_code == 429:
-        if not api_key:
-            raise GoogleBooksError(
-                "Google Books respondeu HTTP 429 sem uma API key configurada. "
-                "Configure GOOGLE_BOOKS_API_KEY no arquivo .env para identificar "
-                "o projeto e usar a cota da aplicação."
+    for tentativa in range(1, MAX_TENTATIVAS + 1):
+        try:
+            resposta = requests.get(
+                GOOGLE_BOOKS_URL,
+                params=parametros,
+                timeout=timeout,
             )
-        raise GoogleBooksError(
-            "Google Books limitou as consultas da API key configurada (HTTP 429). "
-            "Confira a cota do projeto no Google Cloud e tente novamente mais tarde."
-        )
+        except requests.Timeout as erro:
+            if tentativa < MAX_TENTATIVAS:
+                time.sleep(_tempo_espera(None, tentativa))
+                continue
+            raise GoogleBooksError(
+                "A consulta à Google Books API excedeu o tempo limite após "
+                f"{MAX_TENTATIVAS} tentativas."
+            ) from erro
+        except requests.ConnectionError as erro:
+            if tentativa < MAX_TENTATIVAS:
+                time.sleep(_tempo_espera(None, tentativa))
+                continue
+            raise GoogleBooksError(
+                "Não foi possível estabelecer conexão com a Google Books API após "
+                f"{MAX_TENTATIVAS} tentativas. Verifique internet, DNS, proxy ou firewall."
+            ) from erro
+        except requests.RequestException as erro:
+            raise GoogleBooksError(
+                f"Falha ao enviar a requisição para a Google Books API: {type(erro).__name__}."
+            ) from erro
 
-    if not resposta.ok:
-        raise GoogleBooksError(
-            f"Google Books respondeu com erro HTTP {resposta.status_code}."
-        )
+        if resposta.status_code == 403:
+            complemento = (
+                " Configure GOOGLE_BOOKS_API_KEY no arquivo .env."
+                if not api_key
+                else " Confira se a Books API está habilitada e se a chave possui permissão."
+            )
+            raise GoogleBooksError(
+                "Google Books recusou a consulta (HTTP 403)." + complemento
+            )
+
+        if resposta.status_code in STATUS_TEMPORARIOS:
+            if resposta.status_code == 429 and not api_key:
+                raise GoogleBooksError(
+                    "Google Books respondeu HTTP 429 sem uma API key configurada. "
+                    "Configure GOOGLE_BOOKS_API_KEY no arquivo .env para identificar "
+                    "o projeto e usar a cota da aplicação."
+                )
+
+            if tentativa < MAX_TENTATIVAS:
+                time.sleep(_tempo_espera(resposta, tentativa))
+                continue
+
+            if resposta.status_code == 429:
+                raise GoogleBooksError(
+                    "Google Books continua limitando as consultas da API key "
+                    f"(HTTP 429) após {MAX_TENTATIVAS} tentativas. Confira a cota do projeto."
+                )
+
+            raise GoogleBooksError(
+                "Google Books continua temporariamente indisponível "
+                f"(HTTP {resposta.status_code}) após {MAX_TENTATIVAS} tentativas."
+            )
+
+        if not resposta.ok:
+            raise GoogleBooksError(
+                f"Google Books respondeu com erro HTTP {resposta.status_code}."
+            )
+
+        break
+
+    if resposta is None:
+        raise GoogleBooksError("A Google Books API não retornou uma resposta.")
 
     try:
         dados = resposta.json()
