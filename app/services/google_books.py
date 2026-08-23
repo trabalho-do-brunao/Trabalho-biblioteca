@@ -107,18 +107,24 @@ def buscar_livro_por_isbn(isbn: str, timeout: float = 10.0) -> dict[str, object]
 
     if resposta.status_code == 403:
         complemento = (
-            " A variável GOOGLE_BOOKS_API_KEY não está configurada no .env."
+            " Configure GOOGLE_BOOKS_API_KEY no arquivo .env."
             if not api_key
-            else " Confira se a API Books está habilitada e se a chave possui permissão."
+            else " Confira se a Books API está habilitada e se a chave possui permissão."
         )
         raise GoogleBooksError(
             "Google Books recusou a consulta (HTTP 403)." + complemento
         )
 
     if resposta.status_code == 429:
+        if not api_key:
+            raise GoogleBooksError(
+                "Google Books respondeu HTTP 429 sem uma API key configurada. "
+                "Configure GOOGLE_BOOKS_API_KEY no arquivo .env para identificar "
+                "o projeto e usar a cota da aplicação."
+            )
         raise GoogleBooksError(
-            "Google Books limitou temporariamente as consultas (HTTP 429). "
-            "Aguarde um pouco e tente novamente."
+            "Google Books limitou as consultas da API key configurada (HTTP 429). "
+            "Confira a cota do projeto no Google Cloud e tente novamente mais tarde."
         )
 
     if not resposta.ok:
