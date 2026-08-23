@@ -265,6 +265,17 @@ async function encaminharMensagemAoWebhook(mensagem) {
     return
   }
 
+  // O WhatsApp pode representar a mesma conta brasileira com um PN canônico
+  // diferente do número cadastrado (por exemplo, variação do nono dígito).
+  // Depois que o remetente passou pela allowlist validada, enviamos ao Python o
+  // telefone exatamente configurado para o teste, que é a chave usada no banco.
+  if (INBOUND_ALLOWED_PHONE) {
+    if (telefone !== INBOUND_ALLOWED_PHONE) {
+      console.log('[INFO] Número canônico do WhatsApp corresponde ao telefone autorizado; usando o formato cadastrado no BiblioAvisa.')
+    }
+    telefone = INBOUND_ALLOWED_PHONE
+  }
+
   const payload = {
     phone: telefone,
     message: texto,
