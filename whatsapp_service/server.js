@@ -7,6 +7,7 @@ import makeWASocket, {
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys'
 import dotenv from 'dotenv'
+import pino from 'pino'
 import qrcode from 'qrcode-terminal'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -21,6 +22,8 @@ const authConfigurado = process.env.BAILEYS_AUTH_DIR || 'whatsapp_service/auth_i
 const AUTH_DIR = path.isAbsolute(authConfigurado)
   ? authConfigurado
   : path.resolve(projectRoot, authConfigurado)
+const LOG_LEVEL = process.env.BAILEYS_LOG_LEVEL || 'silent'
+const baileysLogger = pino({ level: LOG_LEVEL })
 
 let sock = null
 let conectado = false
@@ -75,6 +78,7 @@ async function iniciarWhatsApp() {
 
     const novoSock = makeWASocket({
       auth: state,
+      logger: baileysLogger,
       markOnlineOnConnect: false,
       syncFullHistory: false,
     })
@@ -192,6 +196,7 @@ const servidor = http.createServer(async (req, res) => {
 servidor.listen(PORT, HOST, () => {
   console.log(`[OK] Serviço Baileys local em http://${HOST}:${PORT}`)
   console.log(`[INFO] Sessão local: ${AUTH_DIR}`)
+  console.log(`[INFO] Log interno do Baileys: ${LOG_LEVEL}`)
   iniciarWhatsApp().catch((erro) => {
     estadoConexao = 'erro'
     console.error('[ERRO] Não foi possível iniciar o Baileys:', erro.message)
