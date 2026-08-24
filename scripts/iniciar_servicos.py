@@ -32,7 +32,7 @@ def _carregar_env_local() -> dict[str, str]:
 
     Variáveis herdadas do PowerShell podem sobreviver por toda a sessão. Para evitar
     que uma configuração antiga do terminal habilite o listener sem aparecer no .env,
-    as opções de segurança recebem explicitamente o valor do arquivo ou o padrão seguro.
+    a opção de recebimento recebe explicitamente o valor do arquivo ou o padrão seguro.
     """
     if not ENV_PATH.exists():
         raise RuntimeError(
@@ -50,13 +50,14 @@ def _carregar_env_local() -> dict[str, str]:
     for chave, valor in valores.items():
         os.environ[chave] = valor
 
-    # Segurança: ausência destas opções nunca herda um `true` antigo do PowerShell.
+    # Segurança: a ausência da opção nunca herda um `true` antigo do PowerShell.
     os.environ["WHATSAPP_INBOUND_ENABLED"] = valores.get(
         "WHATSAPP_INBOUND_ENABLED", "false"
     )
-    os.environ["WHATSAPP_INBOUND_ALLOWED_PHONE"] = valores.get(
-        "WHATSAPP_INBOUND_ALLOWED_PHONE", ""
-    )
+
+    # A antiga allowlist por telefone não faz mais parte da configuração. Caso tenha
+    # sobrado em uma sessão antiga do terminal, removemos para não influenciar o Node.
+    os.environ.pop("WHATSAPP_INBOUND_ALLOWED_PHONE", None)
 
     return valores
 
@@ -88,26 +89,13 @@ def _env_ativo(nome: str, padrao: str = "false") -> bool:
     return str(os.getenv(nome, padrao)).strip().lower() in {"1", "true", "yes", "sim"}
 
 
-def _validar_configuracao(valores: dict[str, str]) -> tuple[bool, str]:
-    inbound_ativo = _env_ativo("WHATSAPP_INBOUND_ENABLED")
-    telefone_permitido = "".join(
-        caractere
-        for caractere in str(os.getenv("WHATSAPP_INBOUND_ALLOWED_PHONE", ""))
-        if caractere.isdigit()
-    )
+def _validar_configuracao() -> bool:
+    """Retorna se o recebimento está ativo.
 
-    if inbound_ativo:
-        if not telefone_permitido:
-            raise RuntimeError(
-                "WHATSAPP_INBOUND_ENABLED=true exige WHATSAPP_INBOUND_ALLOWED_PHONE "
-                "configurado no .env. Isso evita que o bot processe contatos não autorizados."
-            )
-        if not 10 <= len(telefone_permitido) <= 15:
-            raise RuntimeError(
-                "WHATSAPP_INBOUND_ALLOWED_PHONE inválido. Informe somente dígitos com DDI e DDD."
-            )
-
-    return inbound_ativo, telefone_permitido
+    A autorização de quem pode usar a renovação não fica no .env: ela é determinada
+    pelos usuários ativos cadastrados no PostgreSQL.
+    """
+    return _env_ativo("WHATSAPP_INBOUND_ENABLED")
 
 
 def _localizar_node() -> str:
@@ -153,7 +141,7 @@ def main() -> int:
     try:
         valores_env = _carregar_env_local()
         _avisar_env_desatualizado(valores_env)
-        inbound_ativo, telefone_permitido = _validar_configuracao(valores_env)
+        inbound_ativo = _validar_configuracao()
         node = _localizar_node()
         servidor = criar_servidor()
     except (RuntimeError, OSError, ValueError) as erro:
@@ -179,9 +167,7 @@ def main() -> int:
         + ("ATIVADO" if inbound_ativo else "DESATIVADO")
     )
     if inbound_ativo:
-        print("[SEGURANÇA] Filtro de telefone: ATIVO")
-    elif telefone_permitido:
-        print("[SEGURANÇA] Telefone autorizado configurado, mas recebimento está desativado.")
+        print("[SEGURANÇA] Autorização de respostas: usuários ativos do PostgreSQL")
     print("[INFO] Pressione Ctrl + C para encerrar todos os serviços.\n")
 
     processo_baileys: subprocess.Popen[str] | None = None
