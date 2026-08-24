@@ -28,7 +28,6 @@ const baileysLogger = pino({ level: LOG_LEVEL })
 const INBOUND_ENABLED = ['1', 'true', 'yes', 'sim'].includes(
   String(process.env.WHATSAPP_INBOUND_ENABLED || 'false').trim().toLowerCase(),
 )
-const INBOUND_ALLOWED_PHONE = String(process.env.WHATSAPP_INBOUND_ALLOWED_PHONE || '').replace(/\D/g, '')
 const SERVICO_INICIADO_EM_MS = Date.now()
 
 let sock = null
@@ -37,7 +36,6 @@ let conectando = false
 let estadoConexao = 'iniciando'
 let timerReconexao = null
 const lidParaTelefone = new Map()
-const telefonesPermitidos = new Set(INBOUND_ALLOWED_PHONE ? [INBOUND_ALLOWED_PHONE] : [])
 
 function responderJson(res, status, dados) {
   const corpo = JSON.stringify(dados)
@@ -95,10 +93,6 @@ async function resolverDestinatario(telefone) {
     throw new Error('O número informado não foi reconhecido como uma conta válida do WhatsApp.')
   }
 
-  const telefoneCanonico = telefoneDeJid(resultado.jid)
-  if (telefoneCanonico) {
-    telefonesPermitidos.add(telefoneCanonico)
-  }
   if (resultado.lid) {
     registrarMapeamentoLidPn(resultado.lid, resultado.jid)
   }
@@ -246,36 +240,14 @@ async function encaminharMensagemAoWebhook(mensagem) {
     return
   }
 
-  let telefone = await resolverTelefoneMensagem(mensagem)
-
-  // Fallback exclusivo do teste controlado: uma resposta que cita um aviso só pode
-  // seguir sem PN resolvido quando existe exatamente um telefone autorizado.
-  // O Python ainda valida se o quoted_message_id pertence a um aviso real do banco.
-  if (!telefone && quotedMessageId && INBOUND_ALLOWED_PHONE) {
-    telefone = INBOUND_ALLOWED_PHONE
-    console.log('[INFO] Remetente veio como LID sem PN; usando o telefone autorizado do teste para validar o aviso citado.')
-  }
-
+  const telefone = await resolverTelefoneMensagem(mensagem)
   if (!telefone) {
     console.log('[INFO] Mensagem de renovação ignorada: não foi possível resolver o telefone do remetente.')
     return
   }
 
-  if (INBOUND_ALLOWED_PHONE && !telefonesPermitidos.has(telefone)) {
-    return
-  }
-
-  // O WhatsApp pode representar a mesma conta brasileira com um PN canônico
-  // diferente do número cadastrado (por exemplo, variação do nono dígito).
-  // Depois que o remetente passou pela allowlist validada, enviamos ao Python o
-  // telefone exatamente configurado para o teste, que é a chave usada no banco.
-  if (INBOUND_ALLOWED_PHONE) {
-    if (telefone !== INBOUND_ALLOWED_PHONE) {
-      console.log('[INFO] Número canônico do WhatsApp corresponde ao telefone autorizado; usando o formato cadastrado no BiblioAvisa.')
-    }
-    telefone = INBOUND_ALLOWED_PHONE
-  }
-
+  // O Node identifica o remetente e encaminha ao Python. A autorização é feita no
+  // PostgreSQL: somente usuários ativos cadastrados entram no fluxo de renovação.
   const payload = {
     phone: telefone,
     message: texto,
@@ -348,12 +320,6 @@ async function iniciarWhatsApp() {
         conectado = true
         estadoConexao = 'conectado'
         console.log('[OK] WhatsApp conectado pelo Baileys.')
-
-        if (INBOUND_ENABLED && INBOUND_ALLOWED_PHONE) {
-          resolverDestinatario(INBOUND_ALLOWED_PHONE)
-            .then(() => console.log('[OK] Telefone autorizado validado pelo WhatsApp.'))
-            .catch((erro) => console.warn(`[AVISO] Não foi possível validar o telefone autorizado: ${erro.message}`))
-        }
       }
 
       if (connection === 'close') {
@@ -418,7 +384,7 @@ const servidor = http.createServer(async (req, res) => {
       state: estadoConexao,
       webhook_url: WEBHOOK_URL,
       inbound_enabled: INBOUND_ENABLED,
-      inbound_allowlist_active: Boolean(INBOUND_ALLOWED_PHONE),
+      inbound_authorization: 'postgresql_active_users',
     })
     return
   }
@@ -501,7 +467,7 @@ servidor.listen(PORT, HOST, () => {
   console.log(`[INFO] Webhook de respostas: ${WEBHOOK_URL}`)
   console.log(`[INFO] Recebimento automático: ${INBOUND_ENABLED ? 'ATIVADO' : 'DESATIVADO'}`)
   if (INBOUND_ENABLED) {
-    console.log(`[INFO] Filtro de telefone para entrada: ${INBOUND_ALLOWED_PHONE ? 'ATIVO' : 'NÃO CONFIGURADO'}`)
+    console.log('[INFO] Autorização de respostas: usuários ativos cadastrados no PostgreSQL')
   }
   iniciarWhatsApp().catch((erro) => {
     estadoConexao = 'erro'
