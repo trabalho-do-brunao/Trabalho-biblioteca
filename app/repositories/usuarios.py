@@ -33,7 +33,7 @@ def normalizar_telefone(telefone: str) -> str:
 
     Para números brasileiros com DDD informados sem o código do país,
     acrescenta automaticamente o código 55. O formato armazenado serve
-    como base para a futura integração com provedores de WhatsApp.
+    como base para a integração com o WhatsApp.
     """
     digitos = re.sub(r"\D", "", telefone or "")
 
@@ -49,6 +49,31 @@ def normalizar_telefone(telefone: str) -> str:
         )
 
     return digitos
+
+
+def _candidatos_telefone_busca(telefone: str) -> list[str]:
+    """Gera formas equivalentes úteis para identificar números brasileiros.
+
+    O WhatsApp pode representar algumas contas brasileiras com ou sem o nono
+    dígito no PN canônico. O cadastro continua armazenando um único telefone;
+    esta função só amplia a busca, sem alterar o valor salvo no banco.
+    """
+    normalizado = normalizar_telefone(telefone)
+    candidatos = [normalizado]
+
+    if not normalizado.startswith("55"):
+        return candidatos
+
+    # 55 + DDD + 9 dígitos: também tenta a forma sem o primeiro 9 do assinante.
+    if len(normalizado) == 13 and normalizado[4] == "9":
+        candidatos.append(normalizado[:4] + normalizado[5:])
+
+    # 55 + DDD + 8 dígitos: para faixas historicamente usadas por celular,
+    # também tenta a forma moderna com o 9 adicional.
+    elif len(normalizado) == 12 and normalizado[4] in {"6", "7", "8", "9"}:
+        candidatos.append(normalizado[:4] + "9" + normalizado[4:])
+
+    return list(dict.fromkeys(candidatos))
 
 
 def normalizar_email(email: str | None) -> str | None:
@@ -127,8 +152,9 @@ def buscar_usuario_por_id(usuario_id: int) -> dict[str, object] | None:
 
 
 def buscar_usuario_por_telefone(telefone: str) -> dict[str, object] | None:
-    """Busca um usuário pelo telefone, aceitando telefone formatado ou somente dígitos."""
-    telefone_normalizado = normalizar_telefone(telefone)
+    """Busca usuário pelo telefone, incluindo variação canônica brasileira do WhatsApp."""
+    candidatos = _candidatos_telefone_busca(telefone)
+    telefone_exato = candidatos[0]
     conexao = conectar()
 
     try:
@@ -137,9 +163,11 @@ def buscar_usuario_por_telefone(telefone: str) -> dict[str, object] | None:
                 """
                 SELECT id, nome, telefone, email, ativo, criado_em
                 FROM usuarios
-                WHERE telefone = %s;
+                WHERE telefone = ANY(%s)
+                ORDER BY CASE WHEN telefone = %s THEN 0 ELSE 1 END, id
+                LIMIT 1;
                 """,
-                (telefone_normalizado,),
+                (candidatos, telefone_exato),
             )
             registro = cursor.fetchone()
             return dict(registro) if registro else None
