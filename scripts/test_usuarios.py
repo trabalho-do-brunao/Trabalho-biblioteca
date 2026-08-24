@@ -54,7 +54,9 @@ def main() -> int:
             f"[OK] Normalização de telefone: {exemplo_formatado} -> {exemplo_normalizado}"
         )
 
-        telefone_teste = "5542" + f"{secrets.randbelow(1_000_000_000):09d}"
+        # Mantém o número na faixa móvel para também validar a variação canônica
+        # brasileira que o WhatsApp pode apresentar com ou sem o nono dígito.
+        telefone_teste = "55429" + f"{secrets.randbelow(100_000_000):08d}"
 
         usuario_criado = cadastrar_usuario(
             nome="Usuário Teste Automático",
@@ -73,6 +75,14 @@ def main() -> int:
         if not por_telefone or por_telefone["id"] != usuario_id:
             raise RuntimeError("A busca por telefone não retornou o usuário esperado.")
         print("[OK] Busca por telefone funcionando.")
+
+        telefone_canonico_sem_nono = telefone_teste[:4] + telefone_teste[5:]
+        por_variacao = buscar_usuario_por_telefone(telefone_canonico_sem_nono)
+        if not por_variacao or por_variacao["id"] != usuario_id:
+            raise RuntimeError(
+                "A busca não reconheceu a variação canônica brasileira sem o nono dígito."
+            )
+        print("[OK] Variação canônica de telefone do WhatsApp reconhecida.")
 
         por_nome = buscar_usuarios_por_nome("Teste Automático")
         if not any(int(usuario["id"]) == usuario_id for usuario in por_nome):
