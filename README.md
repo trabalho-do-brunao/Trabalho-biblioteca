@@ -2,7 +2,7 @@
 
 Este repositório integra dois trabalhos acadêmicos relacionados à automação e à gestão de bibliotecas. As propostas se complementam e são desenvolvidas dentro do mesmo sistema e do mesmo banco de dados PostgreSQL.
 
-> **Quer apenas iniciar o projeto em um computador que já está configurado?** Vá direto para [Uso diário](#uso-diário).
+> **Primeira instalação?** O fluxo recomendado é simples: obter a pasta do projeto, executar `setup.bat` e depois executar `run.bat`.
 
 ---
 
@@ -125,52 +125,45 @@ Relatório das atividades
 
 # Instalação em um computador novo
 
-Esta seção contém o caminho completo desde o clone até o `run.bat`.
-
 ## 1. Pré-requisitos
 
-Instale antes de clonar o projeto:
+Antes de iniciar, o computador precisa possuir:
 
-- **Git**;
 - **Python 3.10 ou superior**;
-- **PostgreSQL 14 ou superior**;
-- **Node.js 20 ou superior**, acompanhado do npm;
-- um editor como **Visual Studio Code** é recomendado, mas não obrigatório.
+- **PostgreSQL 14 ou superior** com o serviço em execução;
+- **Node.js 20 ou superior** com npm;
+- **Git**, caso o projeto seja obtido por clone.
 
-O servidor PostgreSQL precisa estar em execução. O pgAdmin 4 é opcional: ele serve para visualizar e administrar o banco, mas não precisa ficar aberto enquanto o sistema roda.
+O pgAdmin 4 é opcional. Ele pode ser usado para visualizar o banco, mas não precisa permanecer aberto para o sistema funcionar.
 
-Para conferir as instalações no PowerShell:
+## 2. Obter a pasta do projeto
 
-```powershell
-git --version
-python --version
-node --version
-npm --version
-```
+Há duas formas simples.
 
-## 2. Clonar o repositório
+### Opção A — clonar com Git
+
+No PowerShell:
 
 ```powershell
 git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
 cd Trabalho-biblioteca
-```
-
-A branch principal de desenvolvimento do projeto é `repositorio-principal`.
-
-Confira com:
-
-```powershell
-git branch --show-current
-```
-
-Se necessário:
-
-```powershell
 git switch repositorio-principal
-git pull
 ```
 
-## 3. Preparar Python, `.env` e PostgreSQL
+### Opção B — baixar a pasta pelo GitHub
+
+Também é possível baixar o repositório como ZIP pelo GitHub, extrair a pasta em um local de sua preferência e abrir um PowerShell dentro da pasta extraída.
+
+Ao terminar esta etapa, o terminal deve estar na raiz do projeto, onde existem os arquivos:
+
+```text
+setup.bat
+run.bat
+README.md
+requirements.txt
+```
+
+## 3. Executar o instalador automático
 
 Na raiz do projeto, execute:
 
@@ -178,109 +171,128 @@ Na raiz do projeto, execute:
 .\setup.bat
 ```
 
-O `setup.bat`:
+**Não crie o `.env` manualmente antes disso.** O próprio `setup.bat` cria o arquivo a partir de `.env.example` quando necessário e preserva o arquivo caso ele já exista.
 
-1. localiza o Python instalado;
-2. cria `.venv` caso ainda não exista;
-3. instala/atualiza `requirements.txt`;
-4. cria `.env` a partir de `.env.example` somente se o arquivo ainda não existir;
-5. preserva um `.env` já existente;
-6. executa `scripts/init_db.py` para criar/validar o banco e as tabelas.
+O instalador faz automaticamente a preparação do projeto:
 
-Na primeira execução, o `.env` será aberto para configuração. **Nunca envie esse arquivo ao GitHub.**
-
-No mínimo, confira os dados do PostgreSQL:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=ecf
-DB_USER=postgres
-DB_PASSWORD=SUA_SENHA_LOCAL
-DB_MAINTENANCE_NAME=postgres
+```text
+setup.bat
+   ↓
+confere Python, Node.js e npm
+   ↓
+cria .venv se necessário
+   ↓
+instala/atualiza requirements.txt
+   ↓
+instala/atualiza dependências do Baileys com npm.cmd
+   ↓
+cria .env se ainda não existir
+   ↓
+abre o .env para preencher os valores locais necessários
+   ↓
+cria/valida o PostgreSQL e as tabelas
 ```
 
-Para utilizar a consulta por ISBN, configure também sua própria chave:
+Na primeira execução, quando o Bloco de Notas abrir o `.env`, preencha os valores locais necessários, principalmente a senha do PostgreSQL. Salve o arquivo e volte para a janela do instalador.
 
-```env
-GOOGLE_BOOKS_API_KEY=SUA_CHAVE_LOCAL
-```
+O `.env` contém informações locais e não deve ser enviado ao GitHub. Não copie credenciais reais para `.env.example`.
 
-Para permitir que usuários ativos cadastrados no PostgreSQL respondam às mensagens de renovação:
+O `setup.bat` pode ser executado novamente no futuro. Ele preserva o `.env`, atualiza as dependências e valida o banco sem apagar os dados existentes em uma execução normal.
 
-```env
-WHATSAPP_INBOUND_ENABLED=true
-```
+## 4. Iniciar o sistema
 
-Com `WHATSAPP_INBOUND_ENABLED=false`, o serviço continua podendo enviar mensagens, mas não processa respostas recebidas.
-
-As variáveis SMTP podem permanecer vazias enquanto a funcionalidade de e-mail não estiver configurada.
-
-## 4. Instalar as dependências do WhatsApp
-
-O serviço Baileys utiliza Node.js e possui dependências próprias. Na primeira instalação do computador, execute:
-
-```powershell
-cd whatsapp_service
-npm install
-cd ..
-```
-
-A pasta `node_modules` é local e não é enviada ao GitHub.
-
-## 5. Iniciar o BiblioAvisa
-
-Com o ambiente preparado, basta executar na raiz:
+Depois que o `setup.bat` terminar com sucesso, execute:
 
 ```powershell
 .\run.bat
 ```
 
-Não é necessário ativar manualmente o `.venv` para usar o `run.bat`. Ele utiliza diretamente o Python do ambiente virtual.
+O `run.bat` utiliza automaticamente o Python da `.venv`; não é necessário ativar o ambiente virtual manualmente.
 
-O inicializador sobe no mesmo terminal:
+Ele inicia no mesmo terminal:
 
 ```text
 run.bat
    ↓
 scripts/iniciar_servicos.py
-   ├── Webhook Python    → 127.0.0.1:3002
-   └── Serviço Baileys   → 127.0.0.1:3001
+   ├── Webhook Python  → 127.0.0.1:3002
+   └── Baileys         → 127.0.0.1:3001
 ```
 
-Para encerrar os dois serviços:
+O resultado esperado inclui mensagens semelhantes a:
+
+```text
+[WEBHOOK] [OK] http://127.0.0.1:3002/webhook/whatsapp
+[BAILEYS] [OK] Serviço Baileys local em http://127.0.0.1:3001
+[BAILEYS] [OK] WhatsApp conectado pelo Baileys.
+```
+
+Para encerrar os serviços, pressione:
 
 ```text
 Ctrl + C
 ```
 
-## 6. Primeira conexão com o WhatsApp neste computador
+## Resumo da primeira instalação
 
-A sessão do Baileys fica somente no computador local e não é enviada ao GitHub. Por isso, em um computador novo, o terminal poderá exibir um QR Code.
+Para quem já possui Python, PostgreSQL, Node.js e Git instalados, o processo principal é:
 
-No WhatsApp da conta que será usada pelo BiblioAvisa, abra a área de **Aparelhos/Dispositivos conectados**, escolha a opção de vincular um aparelho e escaneie o QR Code exibido no terminal.
+```powershell
+git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
+cd Trabalho-biblioteca
+git switch repositorio-principal
+.\setup.bat
+.\run.bat
+```
 
-Depois da primeira vinculação, a sessão é mantida em `whatsapp_service/auth_info` e normalmente não será necessário escanear o QR novamente naquele computador.
+Se o projeto tiver sido baixado como ZIP, basta entrar na pasta extraída e executar os dois BATs na mesma ordem:
 
-## 7. Cadastrar usuários autorizados a responder pelo WhatsApp
+```powershell
+.\setup.bat
+.\run.bat
+```
 
-O BiblioAvisa não utiliza uma lista de telefones no `.env`. A autorização é feita pelo próprio banco de dados.
+---
 
-Somente um telefone pertencente a um **usuário ativo** da tabela `usuarios` pode entrar no fluxo de renovação. Contatos desconhecidos ou usuários inativos são ignorados silenciosamente.
+## Primeira conexão com o WhatsApp
 
-Enquanto a interface web ainda não estiver pronta, um usuário pode ser cadastrado pelo terminal:
+A sessão do Baileys é local e não é enviada ao GitHub. Em um computador novo, o `run.bat` pode exibir um QR Code no terminal.
+
+No WhatsApp da conta utilizada pelo BiblioAvisa, abra **Aparelhos/Dispositivos conectados**, escolha a opção de vincular um aparelho e escaneie o QR Code.
+
+Depois da vinculação, a sessão fica em `whatsapp_service/auth_info`, pasta ignorada pelo Git.
+
+---
+
+## Recebimento de respostas do WhatsApp
+
+O envio de mensagens funciona independentemente do recebimento automático. Para permitir que o sistema processe respostas como `RENOVAR`, edite o `.env` local e utilize:
+
+```env
+WHATSAPP_INBOUND_ENABLED=true
+```
+
+Depois de alterar essa opção, encerre e execute novamente:
+
+```powershell
+.\run.bat
+```
+
+A autorização não é feita por telefone no `.env`. O BiblioAvisa consulta a tabela `usuarios`: somente usuários ativos cadastrados podem entrar no fluxo de renovação; contatos desconhecidos ou usuários inativos são ignorados silenciosamente.
+
+Enquanto a interface web ainda não estiver pronta, um usuário pode ser cadastrado com:
 
 ```powershell
 .venv\Scripts\python.exe scripts\cadastrar_usuario.py
 ```
 
-O script solicita nome, telefone e e-mail opcional e utiliza as mesmas validações do backend.
-
 ---
 
 # Uso diário
 
-Depois que o computador já passou pela instalação inicial, normalmente basta entrar na pasta do projeto e executar:
+Em um computador que já passou pelo `setup.bat`, normalmente basta atualizar o código e iniciar o sistema.
+
+Se o projeto foi clonado com Git:
 
 ```powershell
 git switch repositorio-principal
@@ -288,25 +300,14 @@ git pull
 .\run.bat
 ```
 
-Se o `git pull` trouxer alterações em `requirements.txt`, rode novamente:
+Se uma atualização trouxer mudanças de dependências, ou se houver dúvida sobre o ambiente local, execute novamente:
 
 ```powershell
 .\setup.bat
-```
-
-Se trouxer alterações em `whatsapp_service/package.json` ou `package-lock.json`, rode:
-
-```powershell
-cd whatsapp_service
-npm install
-cd ..
-```
-
-Depois, volte ao uso normal com:
-
-```powershell
 .\run.bat
 ```
+
+Como o `setup.bat` é reutilizável, não é necessário executar `pip install`, `npm install` ou recriar `.env` manualmente como parte do fluxo normal.
 
 ---
 
@@ -316,7 +317,7 @@ Depois, volte ao uso normal com:
 Trabalho-biblioteca/
 │
 ├── README.md
-├── setup.bat                    # prepara Python, .env e PostgreSQL
+├── setup.bat                    # prepara Python, Node/Baileys, .env e PostgreSQL
 ├── run.bat                      # inicia os serviços locais
 ├── requirements.txt
 ├── .env.example                 # modelo sem credenciais reais
@@ -372,35 +373,31 @@ O `scripts/init_db.py` cria o banco quando permitido, executa `database/db.sql`,
 
 ## Solução rápida de problemas
 
-### `run.bat` informa que `.venv` não existe
+### `run.bat` informa que `.venv` ou `node_modules` não existe
 
-Execute:
+Execute novamente o instalador:
 
 ```powershell
 .\setup.bat
 ```
 
+### PowerShell bloqueia `npm.ps1`
+
+O fluxo normal não precisa executar `npm install` manualmente. O `setup.bat` chama `npm.cmd` diretamente e evita esse bloqueio do PowerShell.
+
 ### Erro de conexão com PostgreSQL
 
-Confira se o serviço PostgreSQL está iniciado e revise `DB_HOST`, `DB_PORT`, `DB_USER` e `DB_PASSWORD` no `.env` local.
-
-### `node` não foi encontrado
-
-Instale Node.js 20 ou superior e abra um novo terminal.
-
-### `node_modules` não existe
-
-Execute:
+Confira se o serviço PostgreSQL está iniciado. Depois execute:
 
 ```powershell
-cd whatsapp_service
-npm install
-cd ..
+.\setup.bat
 ```
+
+Se o instalador indicar erro de credenciais, corrija somente o `.env` local e execute o `setup.bat` novamente.
 
 ### Portas 3001 ou 3002 já estão em uso
 
-Feche instâncias antigas do BiblioAvisa ou terminais que ainda estejam executando o Baileys/webhook e rode novamente:
+Feche instâncias antigas do BiblioAvisa ou terminais que ainda estejam executando os serviços e rode novamente:
 
 ```powershell
 .\run.bat
@@ -408,16 +405,11 @@ Feche instâncias antigas do BiblioAvisa ou terminais que ainda estejam executan
 
 ### WhatsApp não processa `RENOVAR`
 
-Confira se:
-
-- `WHATSAPP_INBOUND_ENABLED=true` no `.env`;
-- o telefone do remetente está cadastrado na tabela `usuarios`;
-- o usuário está com `ativo = true`;
-- o Baileys aparece como conectado no terminal.
+Confira se `WHATSAPP_INBOUND_ENABLED=true`, se o remetente é um usuário ativo cadastrado e se o terminal indica que o Baileys está conectado.
 
 ### WhatsApp pede QR Code novamente
 
-A sessão é local a cada computador. Se ela não existir ou tiver sido desvinculada, uma nova vinculação será necessária.
+A sessão é local a cada computador. Se a pasta de sessão não existir ou a conta tiver sido desvinculada, uma nova vinculação será necessária.
 
 ---
 
