@@ -1,6 +1,8 @@
 # BiblioAvisa — Sistema de Gestão de Biblioteca com Integração via WhatsApp
 
-Este repositório integra dois trabalhos acadêmicos relacionados à automação e à gestão de bibliotecas. As propostas se complementam e serão desenvolvidas dentro do mesmo sistema.
+Este repositório integra dois trabalhos acadêmicos relacionados à automação e à gestão de bibliotecas. As propostas se complementam e são desenvolvidas dentro do mesmo sistema e do mesmo banco de dados PostgreSQL.
+
+> **Primeira instalação?** O fluxo recomendado é simples: obter a pasta do projeto, executar `setup.bat` e depois executar `run.bat`.
 
 ---
 
@@ -75,9 +77,7 @@ O sistema deve:
 
 ## Como os dois trabalhos se conectam
 
-Os dois trabalhos serão implementados como partes do mesmo sistema. O cadastro do acervo e dos empréstimos forma a base da aplicação, enquanto a automação utiliza esses dados para acompanhar os prazos de devolução, enviar mensagens pelo WhatsApp, receber solicitações de renovação e gerar relatórios.
-
-Fluxo geral planejado:
+Os dois trabalhos são implementados como partes do mesmo sistema. O cadastro do acervo e dos empréstimos forma a base da aplicação, enquanto a automação utiliza esses dados para acompanhar os prazos de devolução, enviar mensagens pelo WhatsApp, receber solicitações de renovação e gerar relatórios.
 
 ```text
 Cadastro de usuário e acervo
@@ -96,6 +96,8 @@ Usuário pode responder solicitando renovação
           ↓
 Webhook recebe a resposta
           ↓
+Sistema valida o usuário no PostgreSQL
+          ↓
 Sistema registra a renovação
           ↓
 Relatório das atividades
@@ -103,226 +105,339 @@ Relatório das atividades
 
 ---
 
-## Tecnologias e ferramentas previstas
+## Tecnologias utilizadas
 
-- **Python** — linguagem principal da aplicação e das automações;
-- **PostgreSQL** — armazenamento de usuários, livros, empréstimos, renovações e mensagens;
-- **psycopg2** — conexão entre Python e PostgreSQL na primeira versão;
-- **Google Books API** — busca dos dados do livro pelo ISBN;
-- **Requests** — comunicação com APIs via HTTP;
-- **WhatsApp Business API ou Twilio API for WhatsApp** — envio e recebimento de mensagens;
-- **Webhook** — recebimento das respostas dos usuários;
-- **APScheduler** — execução automática da verificação de prazos;
-- **ReportLab ou FPDF** — geração de relatórios em PDF;
-- **SMTP** — envio do relatório por e-mail;
-- **Git / GitHub** — versionamento e controle do código;
-- **Figma** — prototipação da interface e dos fluxos.
+- **Python 3.10+** — aplicação, regras de negócio, automações e webhook;
+- **PostgreSQL 14+** — armazenamento dos dados do sistema;
+- **psycopg2** — conexão entre Python e PostgreSQL;
+- **Google Books API** — consulta de livros pelo ISBN;
+- **Requests** — comunicação HTTP no backend;
+- **Node.js 20+** — execução do serviço local de WhatsApp;
+- **Baileys** — integração não oficial com WhatsApp Web por sessão vinculada;
+- **APScheduler** — agendamento das automações;
+- **ReportLab** — geração dos relatórios em PDF;
+- **SMTP** — envio de relatórios por e-mail;
+- **React + Vite** — tecnologia planejada para a interface web;
+- **Git / GitHub** — versionamento e colaboração;
+- **Figma** — prototipação das telas e fluxos.
 
 ---
 
-## Estrutura do projeto
+# Instalação em um computador novo
+
+## 1. Pré-requisitos
+
+Antes de iniciar, o computador precisa possuir:
+
+- **Python 3.10 ou superior**;
+- **PostgreSQL 14 ou superior** com o serviço em execução;
+- **Node.js 20 ou superior** com npm;
+- **Git**, caso o projeto seja obtido por clone.
+
+O pgAdmin 4 é opcional. Ele pode ser usado para visualizar o banco, mas não precisa permanecer aberto para o sistema funcionar.
+
+## 2. Obter a pasta do projeto
+
+Há duas formas simples.
+
+### Opção A — clonar com Git
+
+No PowerShell:
+
+```powershell
+git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
+cd Trabalho-biblioteca
+git switch repositorio-principal
+```
+
+### Opção B — baixar a pasta pelo GitHub
+
+Também é possível baixar o repositório como ZIP pelo GitHub, extrair a pasta em um local de sua preferência e abrir um PowerShell dentro da pasta extraída.
+
+Ao terminar esta etapa, o terminal deve estar na raiz do projeto, onde existem os arquivos:
+
+```text
+setup.bat
+run.bat
+README.md
+requirements.txt
+```
+
+## 3. Executar o instalador automático
+
+Na raiz do projeto, execute:
+
+```powershell
+.\setup.bat
+```
+
+**Não crie o `.env` manualmente antes disso.** O próprio `setup.bat` cria o arquivo a partir de `.env.example` quando necessário e preserva o arquivo caso ele já exista.
+
+O instalador faz automaticamente a preparação do projeto:
+
+```text
+setup.bat
+   ↓
+confere Python, Node.js e npm
+   ↓
+cria .venv se necessário
+   ↓
+instala/atualiza requirements.txt
+   ↓
+instala/atualiza dependências do Baileys com npm.cmd
+   ↓
+cria .env se ainda não existir
+   ↓
+abre o .env para preencher os valores locais necessários
+   ↓
+cria/valida o PostgreSQL e as tabelas
+```
+
+Na primeira execução, quando o Bloco de Notas abrir o `.env`, preencha os valores locais necessários, principalmente a senha do PostgreSQL. Salve o arquivo e volte para a janela do instalador.
+
+O `.env` contém informações locais e não deve ser enviado ao GitHub. Não copie credenciais reais para `.env.example`.
+
+O `setup.bat` pode ser executado novamente no futuro. Ele preserva o `.env`, atualiza as dependências e valida o banco sem apagar os dados existentes em uma execução normal.
+
+## 4. Iniciar o sistema
+
+Depois que o `setup.bat` terminar com sucesso, execute:
+
+```powershell
+.\run.bat
+```
+
+O `run.bat` utiliza automaticamente o Python da `.venv`; não é necessário ativar o ambiente virtual manualmente.
+
+Ele inicia no mesmo terminal:
+
+```text
+run.bat
+   ↓
+scripts/iniciar_servicos.py
+   ├── Webhook Python  → 127.0.0.1:3002
+   └── Baileys         → 127.0.0.1:3001
+```
+
+O resultado esperado inclui mensagens semelhantes a:
+
+```text
+[WEBHOOK] [OK] http://127.0.0.1:3002/webhook/whatsapp
+[BAILEYS] [OK] Serviço Baileys local em http://127.0.0.1:3001
+[BAILEYS] [OK] WhatsApp conectado pelo Baileys.
+```
+
+Para encerrar os serviços, pressione:
+
+```text
+Ctrl + C
+```
+
+## Resumo da primeira instalação
+
+Para quem já possui Python, PostgreSQL, Node.js e Git instalados, o processo principal é:
+
+```powershell
+git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
+cd Trabalho-biblioteca
+git switch repositorio-principal
+.\setup.bat
+.\run.bat
+```
+
+Se o projeto tiver sido baixado como ZIP, basta entrar na pasta extraída e executar os dois BATs na mesma ordem:
+
+```powershell
+.\setup.bat
+.\run.bat
+```
+
+---
+
+## Primeira conexão com o WhatsApp
+
+A sessão do Baileys é local e não é enviada ao GitHub. Em um computador novo, o `run.bat` pode exibir um QR Code no terminal.
+
+No WhatsApp da conta utilizada pelo BiblioAvisa, abra **Aparelhos/Dispositivos conectados**, escolha a opção de vincular um aparelho e escaneie o QR Code.
+
+Depois da vinculação, a sessão fica em `whatsapp_service/auth_info`, pasta ignorada pelo Git.
+
+---
+
+## Recebimento de respostas do WhatsApp
+
+O envio de mensagens funciona independentemente do recebimento automático. Para permitir que o sistema processe respostas como `RENOVAR`, edite o `.env` local e utilize:
+
+```env
+WHATSAPP_INBOUND_ENABLED=true
+```
+
+Depois de alterar essa opção, encerre e execute novamente:
+
+```powershell
+.\run.bat
+```
+
+A autorização não é feita por telefone no `.env`. O BiblioAvisa consulta a tabela `usuarios`: somente usuários ativos cadastrados podem entrar no fluxo de renovação; contatos desconhecidos ou usuários inativos são ignorados silenciosamente.
+
+Enquanto a interface web ainda não estiver pronta, um usuário pode ser cadastrado com:
+
+```powershell
+.venv\Scripts\python.exe scripts\cadastrar_usuario.py
+```
+
+---
+
+# Uso diário
+
+Em um computador que já passou pelo `setup.bat`, normalmente basta atualizar o código e iniciar o sistema.
+
+Se o projeto foi clonado com Git:
+
+```powershell
+git switch repositorio-principal
+git pull
+.\run.bat
+```
+
+Se uma atualização trouxer mudanças de dependências, ou se houver dúvida sobre o ambiente local, execute novamente:
+
+```powershell
+.\setup.bat
+.\run.bat
+```
+
+Como o `setup.bat` é reutilizável, não é necessário executar `pip install`, `npm install` ou recriar `.env` manualmente como parte do fluxo normal.
+
+---
+
+## Estrutura principal do projeto
 
 ```text
 Trabalho-biblioteca/
 │
 ├── README.md
+├── setup.bat                    # prepara Python, Node/Baileys, .env e PostgreSQL
+├── run.bat                      # inicia os serviços locais
 ├── requirements.txt
-├── .env.example
+├── .env.example                 # modelo sem credenciais reais
 ├── .gitignore
+│
+├── app/
+│   ├── db.py
+│   ├── repositories/            # acesso aos dados do PostgreSQL
+│   ├── services/                # regras e integrações da aplicação
+│   ├── automation/              # verificações e envio de notificações
+│   └── webhooks/                # recebimento das respostas do WhatsApp
 │
 ├── database/
 │   ├── db.sql
 │   └── seed.sql
 │
 ├── scripts/
-│   └── init_db.py
+│   ├── init_db.py
+│   ├── iniciar_servicos.py
+│   ├── cadastrar_usuario.py
+│   ├── cadastrar_livro_isbn.py
+│   ├── gerar_relatorio_pdf.py
+│   └── scripts de teste
 │
-├── app/
-│   ├── main.py
-│   ├── db.py                  # será implementado na etapa de conexão da aplicação
-│   ├── services/
-│   │   ├── google_books.py
-│   │   ├── whatsapp.py
-│   │   ├── email_service.py
-│   │   └── relatorio.py
-│   └── automation/
-│       └── verificar_prazos.py
+├── whatsapp_service/
+│   ├── package.json
+│   ├── server.js
+│   └── auth_info/               # sessão local, ignorada pelo Git
 │
 ├── docs/
 └── tests/
 ```
 
-A estrutura poderá ser ajustada conforme o projeto evoluir.
+A estrutura continuará evoluindo com a implementação da interface web.
 
 ---
 
-## Configuração inicial
+## Banco de dados
 
-### Pré-requisitos
+O banco padrão é `ecf`, utilizando o schema `public`.
 
-- Python 3.10+
-- PostgreSQL 14+
-- Git
-- PostgreSQL em execução na máquina
+As tabelas principais são:
 
-O pgAdmin 4 pode ser utilizado para visualizar e administrar o banco, mas não precisa estar aberto para o Python executar os scripts SQL. O Python se conecta diretamente ao servidor PostgreSQL.
+- `usuarios`;
+- `livros`;
+- `emprestimos`;
+- `renovacoes`;
+- `mensagens`.
 
-### 1. Clonar o repositório
-
-```bash
-git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
-cd Trabalho-biblioteca
-```
-
-### 2. Criar e ativar o ambiente virtual no Windows
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 3. Instalar as dependências
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Criar o arquivo local de configuração
-
-No Windows:
-
-```bash
-copy .env.example .env
-```
-
-Edite o arquivo `.env` e informe os dados do PostgreSQL instalado na sua máquina. Exemplo:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=ecf
-DB_USER=postgres
-DB_PASSWORD=sua_senha_local
-DB_MAINTENANCE_NAME=postgres
-```
-
-O arquivo `.env` está incluído no `.gitignore` e não deve ser enviado ao GitHub.
-
-### 5. Inicializar o banco automaticamente
-
-```bash
-python scripts/init_db.py
-```
-
-O script realiza automaticamente o seguinte fluxo:
-
-```text
-Lê o arquivo .env
-        ↓
-Conecta ao PostgreSQL local
-        ↓
-Verifica se DB_NAME existe
-        ↓
-Cria o banco se necessário
-        ↓
-Executa database/db.sql
-        ↓
-Executa database/seed.sql
-        ↓
-Valida as tabelas principais
-```
-
-Ao final, devem existir no schema `public` as tabelas:
-
-- `usuarios`
-- `livros`
-- `emprestimos`
-- `renovacoes`
-- `mensagens`
-
-O script não apaga tabelas ou dados existentes. Se encontrar apenas parte da estrutura esperada, ele interrompe a execução para evitar alterações destrutivas automáticas. Os dados de demonstração também foram preparados para não serem duplicados em execuções consecutivas.
-
-> Se o usuário PostgreSQL configurado não possuir permissão para criar bancos, crie somente o banco indicado em `DB_NAME` pelo pgAdmin uma única vez e execute novamente `python scripts/init_db.py`. As tabelas continuarão sendo criadas automaticamente pelo script.
+O `scripts/init_db.py` cria o banco quando permitido, executa `database/db.sql`, aplica os dados de demonstração de forma segura e valida a estrutura esperada. Ele não deve apagar dados existentes durante uma inicialização normal.
 
 ---
 
-## Lista de tarefas do projeto
+## Solução rápida de problemas
 
-### 1. Configuração do ambiente
+### `run.bat` informa que `.venv` ou `node_modules` não existe
 
-- [x] Criar repositório no GitHub
-- [ ] Configurar ambiente virtual Python (`venv`) em cada máquina de desenvolvimento
-- [x] Criar `requirements.txt`
-- [x] Criar `.env.example`
-- [x] Criar `.gitignore`
-- [x] Criar inicializador automático `scripts/init_db.py`
+Execute novamente o instalador:
 
-### 2. Banco de dados — PostgreSQL
+```powershell
+.\setup.bat
+```
 
-- [x] Criar estrutura inicial do banco
-- [x] Criar tabelas `usuarios`, `livros` e `emprestimos`
-- [x] Adequar o banco às entidades exigidas pelo BiblioAvisa
-- [x] Criar tabela `renovacoes`
-- [x] Criar tabela `mensagens`
-- [x] Separar dados de teste em `seed.sql`
-- [ ] Validar `db.sql`, `seed.sql` e `scripts/init_db.py` em uma instalação PostgreSQL local
+### PowerShell bloqueia `npm.ps1`
 
-### 3. Conexão Python ↔ PostgreSQL
+O fluxo normal não precisa executar `npm install` manualmente. O `setup.bat` chama `npm.cmd` diretamente e evita esse bloqueio do PowerShell.
 
-- [ ] Criar módulo `app/db.py`
-- [x] Preparar configuração de conexão por variáveis de ambiente
-- [ ] Buscar empréstimos ativos
-- [ ] Registrar e atualizar empréstimos
-- [ ] Registrar renovações
-- [ ] Registrar mensagens enviadas e recebidas
+### Erro de conexão com PostgreSQL
 
-### 4. Cadastro de acervo e Google Books
+Confira se o serviço PostgreSQL está iniciado. Depois execute:
 
-- [ ] Criar consulta à Google Books API pelo ISBN
-- [ ] Buscar título, autor e demais dados disponíveis
-- [ ] Permitir conferência dos dados antes do cadastro
-- [ ] Salvar o livro no PostgreSQL
+```powershell
+.\setup.bat
+```
 
-### 5. Lógica de verificação de prazos
+Se o instalador indicar erro de credenciais, corrija somente o `.env` local e execute o `setup.bat` novamente.
 
-- [ ] Identificar empréstimos com vencimento em 2 dias
-- [ ] Identificar empréstimos que vencem no dia
-- [ ] Identificar empréstimos atrasados
-- [ ] Evitar mensagens duplicadas para o mesmo evento
+### Portas 3001 ou 3002 já estão em uso
 
-### 6. Integração com WhatsApp
+Feche instâncias antigas do BiblioAvisa ou terminais que ainda estejam executando os serviços e rode novamente:
 
-- [ ] Configurar WhatsApp Business API ou Twilio
-- [ ] Criar serviço de envio de mensagens
-- [ ] Criar mensagens de lembrete e atraso
-- [ ] Implementar webhook para receber respostas
-- [ ] Processar comando de renovação
-- [ ] Registrar mensagens no banco
+```powershell
+.\run.bat
+```
 
-### 7. Relatórios
+### WhatsApp não processa `RENOVAR`
 
-- [ ] Gerar relatório em PDF
-- [ ] Incluir informações sobre empréstimos e mensagens
-- [ ] Enviar relatório por e-mail ao responsável
+Confira se `WHATSAPP_INBOUND_ENABLED=true`, se o remetente é um usuário ativo cadastrado e se o terminal indica que o Baileys está conectado.
 
-### 8. Agendamento automático
+### WhatsApp pede QR Code novamente
 
-- [ ] Configurar APScheduler ou alternativa equivalente
-- [ ] Executar a verificação de prazos automaticamente
-- [ ] Evoluir `main.py` para orquestrar o fluxo da aplicação
+A sessão é local a cada computador. Se a pasta de sessão não existir ou a conta tiver sido desvinculada, uma nova vinculação será necessária.
 
-### 9. Testes
+---
 
-- [ ] Testar conexão com o banco
-- [ ] Testar Google Books API
-- [ ] Testar envio e recebimento de mensagens
-- [ ] Testar renovação via webhook
-- [ ] Testar geração de PDF
-- [ ] Testar fluxo completo
+## Segurança e arquivos locais
 
-### 10. Documentação e entrega
+Nunca envie ao GitHub:
 
-- [ ] Atualizar o README conforme o desenvolvimento
-- [ ] Comentar o código quando necessário
-- [ ] Adicionar fluxogramas e materiais de apoio
-- [ ] Registrar evidências do sistema funcionando
+- `.env`;
+- senhas do PostgreSQL;
+- chaves de API;
+- credenciais SMTP;
+- números reais usados apenas em testes;
+- arquivos da sessão `whatsapp_service/auth_info`.
+
+O `.env.example` deve conter somente nomes de variáveis e valores de exemplo seguros.
+
+---
+
+## Estado atual do desenvolvimento
+
+Já estão implementados o banco de dados, cadastro de usuários, integração com Google Books, empréstimos e devoluções, verificação dos prazos obrigatórios, envio pelo WhatsApp via Baileys, renovação por resposta, relatórios em PDF e o inicializador conjunto `run.bat`.
+
+As próximas etapas incluem envio de relatório por e-mail, diferencial de análise de risco, agendamento/orquestração do fluxo principal, interface web e testes/documentação finais.
+
+---
+
+## Interface web
+
+A interface escolhida para o projeto será **web**, baseada nas telas desenhadas no Figma. A implementação prevista utilizará React + Vite e consumirá o backend Python sem duplicar as regras de negócio já existentes.
+
+O objetivo é permitir pela interface operações como cadastro e consulta de usuários, busca e cadastro de livros por ISBN, empréstimos, devoluções, consulta de atrasos, mensagens e relatórios.
