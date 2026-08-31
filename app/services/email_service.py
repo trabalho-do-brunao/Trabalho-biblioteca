@@ -54,7 +54,9 @@ def carregar_configuracao_email() -> ConfiguracaoEmail:
             "Arquivo .env não encontrado. Execute setup.bat e configure o e-mail localmente."
         )
 
-    load_dotenv(ENV_PATH)
+    # O arquivo local é a fonte de verdade do projeto, inclusive se o terminal
+    # herdou valores antigos de uma sessão anterior.
+    load_dotenv(ENV_PATH, override=True)
 
     host = (os.getenv("SMTP_HOST") or "").strip()
     porta_texto = (os.getenv("SMTP_PORT") or "587").strip()
