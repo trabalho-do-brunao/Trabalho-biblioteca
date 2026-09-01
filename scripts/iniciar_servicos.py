@@ -31,8 +31,9 @@ def _carregar_env_local() -> dict[str, str]:
     """Carrega somente o .env local e o torna a fonte oficial desta execução.
 
     Variáveis herdadas do PowerShell podem sobreviver por toda a sessão. Para evitar
-    que uma configuração antiga do terminal habilite o listener sem aparecer no .env,
-    a opção de recebimento recebe explicitamente o valor do arquivo ou o padrão seguro.
+    que uma configuração antiga habilite comportamentos automáticos sem aparecer no
+    arquivo local, opções sensíveis recebem explicitamente o valor do `.env` ou um
+    padrão seguro desligado.
     """
     if not ENV_PATH.exists():
         raise RuntimeError(
@@ -46,17 +47,15 @@ def _carregar_env_local() -> dict[str, str]:
         if chave and valor is not None
     }
 
-    # O .env local tem precedência sobre valores antigos herdados do terminal.
     for chave, valor in valores.items():
         os.environ[chave] = valor
 
-    # Segurança: a ausência da opção nunca herda um `true` antigo do PowerShell.
     os.environ["WHATSAPP_INBOUND_ENABLED"] = valores.get(
         "WHATSAPP_INBOUND_ENABLED", "false"
     )
+    os.environ["AUTOMACAO_ENABLED"] = valores.get("AUTOMACAO_ENABLED", "false")
 
-    # A antiga allowlist por telefone não faz mais parte da configuração. Caso tenha
-    # sobrado em uma sessão antiga do terminal, removemos para não influenciar o Node.
+    # A antiga allowlist por telefone não faz mais parte da configuração.
     os.environ.pop("WHATSAPP_INBOUND_ALLOWED_PHONE", None)
 
     return valores
@@ -86,16 +85,7 @@ def _avisar_env_desatualizado(valores: dict[str, str]) -> None:
 
 
 def _env_ativo(nome: str, padrao: str = "false") -> bool:
-    return str(os.getenv(nome, padrao)).strip().lower() in {"1", "true", "yes", "sim"}
-
-
-def _validar_configuracao() -> bool:
-    """Retorna se o recebimento está ativo.
-
-    A autorização de quem pode usar a renovação não fica no .env: ela é determinada
-    pelos usuários ativos cadastrados no PostgreSQL.
-    """
-    return _env_ativo("WHATSAPP_INBOUND_ENABLED")
+    return str(os.getenv(nome, padrao)).strip().lower() in {"1", "true", "yes", "sim", "on"}
 
 
 def _localizar_node() -> str:
@@ -111,18 +101,18 @@ def _localizar_node() -> str:
     if not NODE_MODULES.exists():
         raise RuntimeError(
             "Dependências do WhatsApp ainda não foram instaladas. "
-            "Execute uma vez: cd whatsapp_service; npm install"
+            "Execute novamente setup.bat para preparar o ambiente."
         )
 
     return node
 
 
-def _ler_saida(processo: subprocess.Popen[str]) -> None:
+def _ler_saida(processo: subprocess.Popen[str], prefixo: str) -> None:
     assert processo.stdout is not None
     for linha in processo.stdout:
         texto = linha.rstrip()
         if texto:
-            print(f"[BAILEYS] {texto}", flush=True)
+            print(f"[{prefixo}] {texto}", flush=True)
 
 
 def _encerrar_processo(processo: subprocess.Popen[str] | None) -> None:
@@ -137,11 +127,39 @@ def _encerrar_processo(processo: subprocess.Popen[str] | None) -> None:
         processo.wait(timeout=2)
 
 
+def _iniciar_processo(
+    comando: list[str],
+    *,
+    cwd: Path,
+    prefixo: str,
+) -> tuple[subprocess.Popen[str], threading.Thread]:
+    processo = subprocess.Popen(
+        comando,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+        env=os.environ.copy(),
+    )
+    thread = threading.Thread(
+        target=_ler_saida,
+        args=(processo, prefixo),
+        name=f"biblioavisa-{prefixo.lower()}-log",
+        daemon=True,
+    )
+    thread.start()
+    return processo, thread
+
+
 def main() -> int:
     try:
         valores_env = _carregar_env_local()
         _avisar_env_desatualizado(valores_env)
-        inbound_ativo = _validar_configuracao()
+        inbound_ativo = _env_ativo("WHATSAPP_INBOUND_ENABLED")
+        automacao_ativa = _env_ativo("AUTOMACAO_ENABLED")
         node = _localizar_node()
         servidor = criar_servidor()
     except (RuntimeError, OSError, ValueError) as erro:
@@ -151,6 +169,8 @@ def main() -> int:
     host, porta = servidor.server_address
     baileys_host = (os.getenv("BAILEYS_SERVICE_HOST") or "127.0.0.1").strip()
     baileys_porta = (os.getenv("BAILEYS_SERVICE_PORT") or "3001").strip()
+    automacao_hora = (os.getenv("AUTOMACAO_HORA") or "08:00").strip()
+    automacao_timezone = (os.getenv("AUTOMACAO_TIMEZONE") or "America/Sao_Paulo").strip()
 
     thread_webhook = threading.Thread(
         target=servidor.serve_forever,
@@ -168,38 +188,53 @@ def main() -> int:
     )
     if inbound_ativo:
         print("[SEGURANÇA] Autorização de respostas: usuários ativos do PostgreSQL")
+
+    if automacao_ativa:
+        print(
+            f"[AUTOMAÇÃO] [INFO] Rotina diária ATIVADA para {automacao_hora} "
+            f"({automacao_timezone})"
+        )
+    else:
+        print("[AUTOMAÇÃO] [INFO] Rotina diária DESATIVADA")
+
     print("[INFO] Pressione Ctrl + C para encerrar todos os serviços.\n")
 
     processo_baileys: subprocess.Popen[str] | None = None
+    processo_automacao: subprocess.Popen[str] | None = None
 
     try:
-        processo_baileys = subprocess.Popen(
+        processo_baileys, _ = _iniciar_processo(
             [node, "--import", "./silenciar_logs.js", "server.js"],
             cwd=WHATSAPP_DIR,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            bufsize=1,
-            env=os.environ.copy(),
+            prefixo="BAILEYS",
         )
-        thread_saida = threading.Thread(
-            target=_ler_saida,
-            args=(processo_baileys,),
-            name="biblioavisa-baileys-log",
-            daemon=True,
-        )
-        thread_saida.start()
+
+        if automacao_ativa:
+            processo_automacao, _ = _iniciar_processo(
+                [sys.executable, "-m", "app.main", "--agendar"],
+                cwd=PROJECT_ROOT,
+                prefixo="AUTOMAÇÃO",
+            )
 
         while True:
-            codigo = processo_baileys.poll()
-            if codigo is not None:
-                if codigo == 0:
+            codigo_baileys = processo_baileys.poll()
+            if codigo_baileys is not None:
+                if codigo_baileys == 0:
                     print("[INFO] Serviço Baileys foi encerrado.")
                     return 0
-                print(f"[ERRO] Serviço Baileys encerrou inesperadamente com código {codigo}.")
-                return codigo or 1
+                print(
+                    f"[ERRO] Serviço Baileys encerrou inesperadamente com código {codigo_baileys}."
+                )
+                return codigo_baileys or 1
+
+            if processo_automacao is not None:
+                codigo_automacao = processo_automacao.poll()
+                if codigo_automacao is not None:
+                    print(
+                        "[ERRO] Processo da automação diária foi encerrado "
+                        f"inesperadamente com código {codigo_automacao}."
+                    )
+                    return codigo_automacao or 1
 
             if not thread_webhook.is_alive():
                 print("[ERRO] Webhook foi encerrado inesperadamente.")
@@ -213,6 +248,7 @@ def main() -> int:
     finally:
         servidor.shutdown()
         servidor.server_close()
+        _encerrar_processo(processo_automacao)
         _encerrar_processo(processo_baileys)
         print("[OK] Serviços encerrados.")
 
