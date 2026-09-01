@@ -1,0 +1,171 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--color-text);
+  background: var(--color-page-background);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+.page {
+  width: min(100%, 1500px);
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 2px 0 8px;
+  font-size: clamp(1.75rem, 2vw, 2.35rem);
+  font-weight: 600;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.page-eyebrow {
+  color: var(--color-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-card {
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+}
+
+.placeholder-card {
+  display: grid;
+  gap: 8px;
+  min-height: 180px;
+  align-content: center;
+}
+
+.placeholder-card span {
+  color: var(--color-text-muted);
+}
+
+.api-health-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.api-health-card > svg {
+  width: 34px;
+  height: 34px;
+  color: var(--color-primary);
+}
+
+.api-health-card p {
+  margin: 5px 0 0;
+}
+
+.api-status.ok {
+  color: var(--color-success);
+}
+
+.api-status.erro {
+  color: var(--color-error);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.login-foundation {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+}
+
+.login-foundation-card {
+  width: min(100%, 440px);
+  padding: 38px;
+  border-radius: 20px;
+  background: var(--color-white);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.login-foundation-card h1 {
+  margin: 12px 0;
+}
+
+.login-foundation-card p {
+  margin: 0 0 24px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.login-foundation-brand {
+  color: var(--color-primary);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 8px;
+  color: var(--color-white);
+  background: var(--color-primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .page-card {
+    padding: 18px;
+    border-radius: 10px;
+  }
+}

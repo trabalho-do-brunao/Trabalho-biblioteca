@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!frontend/.env.example
 
 # Ambientes virtuais Python
 .venv/
@@ -12,6 +13,13 @@ env/
 whatsapp_service/node_modules/
 whatsapp_service/auth_info/
 whatsapp_service/.baileys_auth/
+
+# Frontend React / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
 
 # Estado local de testes reais
 .teste_renovacao_real.json

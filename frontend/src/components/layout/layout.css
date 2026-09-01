@@ -1,0 +1,215 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-height) minmax(calc(100vh - var(--topbar-height)), auto);
+  transition: grid-template-columns var(--transition-fast);
+}
+
+.app-shell.sidebar-closed {
+  grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
+}
+
+.sidebar {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-white);
+  border-right: 1px solid var(--color-border);
+}
+
+.sidebar-brand {
+  min-height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  color: var(--color-white);
+  background: var(--color-primary-dark);
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.sidebar-brand-short {
+  display: none;
+  font-weight: 800;
+}
+
+.sidebar-nav {
+  padding: 14px 0;
+  display: grid;
+  gap: 3px;
+}
+
+.sidebar-link,
+.sidebar-exit {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-link svg,
+.sidebar-exit svg {
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  stroke-width: 2.1;
+}
+
+.sidebar-link:hover {
+  background: rgba(14, 6, 255, 0.1);
+}
+
+.sidebar-link.active {
+  color: var(--color-primary-dark);
+  background: var(--color-menu-active);
+}
+
+.sidebar-exit {
+  margin-top: auto;
+  margin-bottom: 22px;
+  width: 100%;
+  color: var(--color-danger);
+}
+
+.sidebar-exit:hover {
+  background: rgba(255, 0, 0, 0.06);
+}
+
+.topbar {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  color: #000;
+  background: var(--color-primary);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-icon-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: #000;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.topbar-icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.topbar-icon-button svg {
+  width: 30px;
+  height: 30px;
+}
+
+.app-content {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  padding: clamp(22px, 3vw, 46px);
+  background: var(--color-page-background);
+}
+
+.sidebar-closed .sidebar-brand-full,
+.sidebar-closed .sidebar-link span,
+.sidebar-closed .sidebar-exit span {
+  display: none;
+}
+
+.sidebar-closed .sidebar-brand-short {
+  display: inline;
+}
+
+.sidebar-closed .sidebar-link,
+.sidebar-closed .sidebar-exit {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 819px) {
+  .app-shell,
+  .app-shell.sidebar-closed,
+  .app-shell.sidebar-open {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar,
+  .app-content {
+    grid-column: 1;
+  }
+
+  .sidebar {
+    position: fixed;
+    width: min(82vw, 290px);
+    transform: translateX(-102%);
+    box-shadow: 16px 0 40px rgba(0, 0, 0, 0.18);
+    transition: transform var(--transition-fast);
+  }
+
+  .sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-closed .sidebar-brand-full,
+  .sidebar-closed .sidebar-link span,
+  .sidebar-closed .sidebar-exit span {
+    display: inline;
+  }
+
+  .sidebar-closed .sidebar-brand-short {
+    display: none;
+  }
+
+  .sidebar-closed .sidebar-link,
+  .sidebar-closed .sidebar-exit {
+    justify-content: flex-start;
+    padding: 0 22px;
+  }
+
+  .sidebar-open .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    border: 0;
+    background: rgba(0, 0, 0, 0.34);
+  }
+
+  .app-content {
+    padding: 22px 16px;
+  }
+}
