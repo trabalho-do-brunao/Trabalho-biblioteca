@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Iterable
 
@@ -9,7 +10,15 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from app.db import conectar
+from app.services.risco_atraso import (
+    CLASSIFICACOES_RISCO,
+    AnaliseRiscoAtraso,
+    classificar_risco_atraso,
+    deve_enviar_lembrete_risco,
+)
 
+
+LOGGER = logging.getLogger(__name__)
 
 CLASSIFICACOES = ("em_dia", "faltam_2_dias", "vence_hoje", "vencido")
 TIPO_POR_CLASSIFICACAO = {
@@ -107,15 +116,146 @@ def _montar_mensagem(emprestimo: dict[str, object], classificacao: str) -> str:
     raise ValueError(f"Classificação sem aviso associado: {classificacao}.")
 
 
+def _montar_mensagem_risco(
+    emprestimo: dict[str, object],
+    analise: AnaliseRiscoAtraso,
+) -> str:
+    usuario = str(emprestimo["usuario_nome"])
+    livro = str(emprestimo["livro_titulo"])
+    prazo = emprestimo["data_prevista_devolucao"]
+
+    if not isinstance(prazo, date):
+        raise ValueError("O empréstimo retornou uma data prevista inválida.")
+    if analise.dias_lembrete_adicional is None:
+        raise ValueError("A classificação de risco não possui lembrete adicional.")
+
+    dias = analise.dias_lembrete_adicional
+    prazo_formatado = prazo.strftime("%d/%m/%Y")
+    return (
+        f'Olá, {usuario}! Para ajudar você a se organizar, lembramos que o empréstimo '
+        f'do livro "{livro}" vence em {dias} dias, em {prazo_formatado}. '
+        "Este é um lembrete antecipado do BiblioAvisa."
+    )
+
+
 def _resultado_vazio(data_referencia: date) -> dict[str, object]:
     return {
         "data_referencia": data_referencia,
         "processados": 0,
         "atualizados_para_atrasado": 0,
         "classificacoes": {nome: 0 for nome in CLASSIFICACOES},
+        "classificacoes_risco": {nome: 0 for nome in CLASSIFICACOES_RISCO},
+        "analises_risco": [],
         "emprestimos": [],
         "mensagens": [],
     }
+
+
+def _buscar_analises_risco(
+    cursor,
+    usuario_ids: list[int],
+    data_referencia: date,
+) -> dict[int, AnaliseRiscoAtraso]:
+    if not usuario_ids:
+        return {}
+
+    cursor.execute(
+        """
+        SELECT
+            u.id AS usuario_id,
+            COUNT(e.id) FILTER (
+                WHERE e.data_devolucao IS NOT NULL
+            ) AS devolucoes_concluidas,
+            COUNT(e.id) FILTER (
+                WHERE e.data_devolucao IS NOT NULL
+                  AND e.data_devolucao > e.data_prevista_devolucao
+            ) AS devolucoes_atrasadas,
+            COUNT(e.id) FILTER (
+                WHERE e.data_devolucao IS NULL
+                  AND e.data_prevista_devolucao < %s
+            ) AS emprestimos_atrasados_abertos
+        FROM usuarios u
+        LEFT JOIN emprestimos e ON e.usuario_id = u.id
+        WHERE u.id = ANY(%s)
+        GROUP BY u.id
+        ORDER BY u.id;
+        """,
+        (data_referencia, usuario_ids),
+    )
+
+    analises: dict[int, AnaliseRiscoAtraso] = {}
+    for linha in cursor.fetchall():
+        usuario_id = int(linha["usuario_id"])
+        analises[usuario_id] = classificar_risco_atraso(
+            int(linha["devolucoes_concluidas"]),
+            int(linha["devolucoes_atrasadas"]),
+            int(linha["emprestimos_atrasados_abertos"]),
+        )
+    return analises
+
+
+def _registrar_lembrete_risco(
+    cursor,
+    emprestimo: dict[str, object],
+    analise: AnaliseRiscoAtraso,
+    data_referencia: date,
+) -> dict[str, object] | None:
+    texto = _montar_mensagem_risco(emprestimo, analise)
+
+    cursor.execute(
+        """
+        INSERT INTO mensagens (
+            usuario_id,
+            emprestimo_id,
+            direcao,
+            tipo,
+            mensagem,
+            status,
+            data_referencia
+        )
+        SELECT %s, %s, 'enviada', 'outro', %s, 'pendente', %s
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM mensagens existente
+            WHERE existente.emprestimo_id = %s
+              AND existente.direcao = 'enviada'
+              AND existente.tipo = 'outro'
+              AND existente.data_referencia = %s
+              AND existente.mensagem = %s
+              AND existente.status <> 'falha'
+        )
+        RETURNING
+            id,
+            usuario_id,
+            emprestimo_id,
+            direcao,
+            tipo,
+            mensagem,
+            status,
+            data_referencia,
+            data_mensagem;
+        """,
+        (
+            emprestimo["usuario_id"],
+            emprestimo["id"],
+            texto,
+            data_referencia,
+            emprestimo["id"],
+            data_referencia,
+            texto,
+        ),
+    )
+    criada = cursor.fetchone()
+    if not criada:
+        return None
+
+    mensagem = dict(criada)
+    mensagem["usuario_nome"] = emprestimo["usuario_nome"]
+    mensagem["usuario_telefone"] = emprestimo["usuario_telefone"]
+    mensagem["livro_titulo"] = emprestimo["livro_titulo"]
+    mensagem["origem"] = "analise_risco"
+    mensagem["risco"] = analise.classificacao
+    return mensagem
 
 
 def verificar_prazos(
@@ -128,9 +268,9 @@ def verificar_prazos(
     são processados. O filtro opcional existe para execuções dirigidas e testes,
     evitando que dados fora do cenário desejado sejam modificados.
 
-    Avisos necessários são inseridos em ``mensagens`` com status ``pendente``.
-    O índice único do banco impede que o mesmo tipo de aviso seja registrado mais
-    de uma vez para o mesmo empréstimo e data de referência.
+    Os três avisos obrigatórios continuam independentes da análise de risco:
+    2 dias antes, no vencimento e após o vencimento. A análise histórica apenas
+    pode acrescentar um lembrete antecipado para risco médio ou alto.
     """
     hoje = _normalizar_data(data_referencia)
     ids = _normalizar_ids(emprestimo_ids)
@@ -176,12 +316,51 @@ def verificar_prazos(
 
             resultado["processados"] = len(emprestimos)
             classificacoes = resultado["classificacoes"]
+            classificacoes_risco = resultado["classificacoes_risco"]
+            analises_risco_resultado = resultado["analises_risco"]
             emprestimos_resultado = resultado["emprestimos"]
             mensagens_resultado = resultado["mensagens"]
 
             assert isinstance(classificacoes, dict)
+            assert isinstance(classificacoes_risco, dict)
+            assert isinstance(analises_risco_resultado, list)
             assert isinstance(emprestimos_resultado, list)
             assert isinstance(mensagens_resultado, list)
+
+            usuario_ids = sorted({int(item["usuario_id"]) for item in emprestimos})
+            analises_por_usuario = _buscar_analises_risco(cursor, usuario_ids, hoje)
+
+            nomes_por_usuario = {
+                int(item["usuario_id"]): str(item["usuario_nome"])
+                for item in emprestimos
+            }
+            for usuario_id in usuario_ids:
+                analise = analises_por_usuario[usuario_id]
+                classificacoes_risco[analise.classificacao] += 1
+                analises_risco_resultado.append(
+                    {
+                        "usuario_id": usuario_id,
+                        "usuario_nome": nomes_por_usuario[usuario_id],
+                        "classificacao": analise.classificacao,
+                        "devolucoes_concluidas": analise.devolucoes_concluidas,
+                        "devolucoes_atrasadas": analise.devolucoes_atrasadas,
+                        "emprestimos_atrasados_abertos": analise.emprestimos_atrasados_abertos,
+                        "percentual_atrasos": round(analise.percentual_atrasos, 2),
+                        "dias_lembrete_adicional": analise.dias_lembrete_adicional,
+                        "motivo": analise.motivo,
+                    }
+                )
+                LOGGER.info(
+                    "Análise de risco: usuario_id=%s classificacao=%s devolucoes=%s "
+                    "atrasos=%s atrasos_abertos=%s lembrete_adicional=%s motivo=%s",
+                    usuario_id,
+                    analise.classificacao,
+                    analise.devolucoes_concluidas,
+                    analise.devolucoes_atrasadas,
+                    analise.emprestimos_atrasados_abertos,
+                    analise.dias_lembrete_adicional,
+                    analise.motivo,
+                )
 
             for emprestimo in emprestimos:
                 prazo = emprestimo["data_prevista_devolucao"]
@@ -193,6 +372,7 @@ def verificar_prazos(
                 dias_para_vencimento = (prazo - hoje).days
                 classificacao = classificar_prazo(prazo, hoje)
                 classificacoes[classificacao] += 1
+                analise = analises_por_usuario[int(emprestimo["usuario_id"])]
 
                 status_final = str(emprestimo["status"])
 
@@ -221,8 +401,21 @@ def verificar_prazos(
                         "dias_para_vencimento": dias_para_vencimento,
                         "classificacao": classificacao,
                         "status": status_final,
+                        "risco_atraso": analise.classificacao,
+                        "motivo_risco": analise.motivo,
+                        "dias_lembrete_adicional": analise.dias_lembrete_adicional,
                     }
                 )
+
+                if deve_enviar_lembrete_risco(analise, dias_para_vencimento):
+                    mensagem_risco = _registrar_lembrete_risco(
+                        cursor,
+                        emprestimo,
+                        analise,
+                        hoje,
+                    )
+                    if mensagem_risco:
+                        mensagens_resultado.append(mensagem_risco)
 
                 tipo = TIPO_POR_CLASSIFICACAO.get(classificacao)
                 if tipo is None:
