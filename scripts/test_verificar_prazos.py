@@ -53,7 +53,9 @@ def criar_cenario(data_referencia: date) -> dict[str, object]:
 
             data_emprestimo = data_referencia - timedelta(days=15)
             cenarios = {
-                "em_dia": data_referencia + timedelta(days=5),
+                # +4 continua classificado como "em_dia", mas não coincide com
+                # os lembretes adicionais da análise de risco (+3 ou +5 dias).
+                "em_dia": data_referencia + timedelta(days=4),
                 "faltam_2_dias": data_referencia + timedelta(days=2),
                 "vence_hoje": data_referencia,
                 "vencido": data_referencia - timedelta(days=1),
