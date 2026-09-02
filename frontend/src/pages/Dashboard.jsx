@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CircleCheck, CircleX, LoaderCircle } from 'lucide-react'
 
-import { verificarSaudeApi } from '../services/api'
+import { mensagemErroApi, verificarSaudeApi } from '../services/api'
 
 export default function Dashboard() {
   const [api, setApi] = useState({ status: 'carregando', mensagem: 'Verificando API Python...' })
@@ -17,7 +17,7 @@ export default function Dashboard() {
       })
       .catch((erro) => {
         if (ativo) {
-          setApi({ status: 'erro', mensagem: erro.message })
+          setApi({ status: 'erro', mensagem: mensagemErroApi(erro) })
         }
       })
 
