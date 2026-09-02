@@ -79,16 +79,21 @@ async function requisicao(caminho, opcoes = {}) {
   const controller = new AbortController()
   const timeoutMs = opcoes.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  const headers = new Headers(opcoes.headers || {})
+
+  headers.set('Accept', 'application/json')
+  if (opcoes.body && !(opcoes.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const abortarPorSinalExterno = () => controller.abort()
+  opcoes.signal?.addEventListener('abort', abortarPorSinalExterno, { once: true })
 
   try {
     const resposta = await fetch(`${API_URL}${caminho}`, {
       ...opcoes,
-      signal: opcoes.signal || controller.signal,
-      headers: {
-        Accept: 'application/json',
-        ...(opcoes.body && !opcoes.headers?.['Content-Type'] ? { 'Content-Type': 'application/json' } : {}),
-        ...(opcoes.headers || {}),
-      },
+      signal: controller.signal,
+      headers,
     })
 
     const payload = await lerResposta(resposta)
@@ -115,6 +120,7 @@ async function requisicao(caminho, opcoes = {}) {
     throw new ApiError('Falha inesperada ao acessar a API.', { type: 'unknown' })
   } finally {
     clearTimeout(timeoutId)
+    opcoes.signal?.removeEventListener('abort', abortarPorSinalExterno)
   }
 }
 
