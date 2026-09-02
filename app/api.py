@@ -11,6 +11,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.routes.demo import router as demo_router
+
 
 load_dotenv(override=False)
 logger = logging.getLogger("biblioavisa.api")
@@ -80,3 +82,6 @@ def health() -> dict[str, str]:
         "service": "BiblioAvisa API",
         "environment": (os.getenv("APP_ENV") or "development").strip(),
     }
+
+
+app.include_router(demo_router)
