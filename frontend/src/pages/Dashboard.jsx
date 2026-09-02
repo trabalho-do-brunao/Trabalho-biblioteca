@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CircleCheck, CircleX, LoaderCircle } from 'lucide-react'
 
+import IntegrationDemo from '../components/demo/IntegrationDemo'
 import { mensagemErroApi, verificarSaudeApi } from '../services/api'
 
 export default function Dashboard() {
@@ -45,6 +46,8 @@ export default function Dashboard() {
           <p className={`api-status ${api.status}`}>{api.mensagem}</p>
         </div>
       </div>
+
+      <IntegrationDemo />
     </section>
   )
 }
