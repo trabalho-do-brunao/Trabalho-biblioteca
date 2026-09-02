@@ -1,0 +1,21 @@
+:root {
+  --color-primary: #0900ff;
+  --color-primary-dark: #050097;
+  --color-menu-active: rgba(14, 6, 255, 0.5);
+  --color-white: #ffffff;
+  --color-danger: #ff0000;
+
+  /* Cores auxiliares de interface; não vieram das medidas do Figma. */
+  --color-page-background: #f2f4ff;
+  --color-text: #17171d;
+  --color-text-muted: #686a78;
+  --color-border: #e2e4ee;
+  --color-success: #16803c;
+  --color-error: #bf2020;
+
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 76px;
+  --topbar-height: 68px;
+  --transition-fast: 180ms ease;
+  --shadow-card: 0 8px 28px rgba(23, 23, 29, 0.08);
+}
