@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.db import testar_conexao
@@ -101,3 +102,25 @@ def demonstrar_integracao(dados: DemonstracaoEntrada) -> dict[str, object]:
             "registros": diagnostico["registros"],
         },
     }
+
+
+@router.get("/erro/{tipo}")
+def demonstrar_erro(tipo: str) -> dict[str, str]:
+    """Gera falhas previsíveis para demonstrar o tratamento visual no frontend."""
+    ambiente = (os.getenv("APP_ENV") or "development").strip().lower()
+    if ambiente not in {"development", "dev", "test"}:
+        raise HTTPException(status_code=404, detail="Recurso não encontrado.")
+
+    if tipo == "acesso":
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado de forma controlada. A interface tratou o erro sem expor detalhes internos.",
+        )
+
+    if tipo == "servico":
+        raise HTTPException(
+            status_code=503,
+            detail="Serviço temporariamente indisponível. A interface pode orientar o usuário a tentar novamente.",
+        )
+
+    raise HTTPException(status_code=400, detail="Tipo de demonstração de erro inválido.")
