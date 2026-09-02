@@ -1,21 +1,27 @@
 import { CircleHelp } from 'lucide-react'
-import { useId } from 'react'
+import { cloneElement, isValidElement, useId } from 'react'
 
 export default function Tooltip({ content, label = 'Mais informações', children, className = '' }) {
   const tooltipId = useId()
 
+  const trigger = isValidElement(children)
+    ? cloneElement(children, {
+        'aria-describedby': [children.props['aria-describedby'], tooltipId].filter(Boolean).join(' '),
+      })
+    : (
+      <button
+        type="button"
+        className="ui-tooltip-trigger"
+        aria-label={label}
+        aria-describedby={tooltipId}
+      >
+        <CircleHelp aria-hidden="true" />
+      </button>
+    )
+
   return (
     <span className={`ui-tooltip ${className}`.trim()}>
-      {children || (
-        <button
-          type="button"
-          className="ui-tooltip-trigger"
-          aria-label={label}
-          aria-describedby={tooltipId}
-        >
-          <CircleHelp aria-hidden="true" />
-        </button>
-      )}
+      {trigger}
       <span id={tooltipId} className="ui-tooltip-content" role="tooltip">
         {content}
       </span>
