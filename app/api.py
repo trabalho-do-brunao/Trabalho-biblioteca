@@ -63,9 +63,9 @@ async def tratar_erro_validacao(_request: Request, exc: RequestValidationError) 
 
 
 @app.exception_handler(Exception)
-async def tratar_erro_inesperado(request: Request, exc: Exception) -> JSONResponse:
+async def tratar_erro_inesperado(request: Request, _exc: Exception) -> JSONResponse:
     """Evita que stack traces e detalhes internos sejam enviados ao frontend."""
-    logger.exception("Erro inesperado na API em %s %s", request.method, request.url.path, exc_info=exc)
+    logger.exception("Erro inesperado na API em %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "O servidor encontrou um problema interno. Tente novamente em instantes."},
