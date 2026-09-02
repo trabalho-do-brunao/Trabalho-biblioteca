@@ -39,6 +39,7 @@ if not exist "requirements.txt" goto :requirements_missing
 if not exist ".env.example" goto :env_example_missing
 if not exist "scripts\init_db.py" goto :init_db_missing
 if not exist "whatsapp_service\package.json" goto :package_json_missing
+if not exist "frontend\package.json" goto :frontend_package_json_missing
 
 rem ------------------------------------------------------
 rem 3. Criar ambiente virtual local, se necessario
@@ -79,7 +80,23 @@ popd
 echo [OK] Dependencias do WhatsApp instaladas.
 
 rem ------------------------------------------------------
-rem 6. Criar o arquivo .env local, se ainda nao existir
+rem 6. Instalar ou atualizar as dependencias do frontend
+rem ------------------------------------------------------
+echo.
+echo [INFO] Instalando dependencias do frontend React + Vite...
+pushd "frontend"
+call npm.cmd install
+if errorlevel 1 (
+    popd
+    goto :frontend_npm_install_error
+)
+if not exist ".env" if exist ".env.example" copy /Y ".env.example" ".env" >nul
+popd
+
+echo [OK] Dependencias do frontend instaladas.
+
+rem ------------------------------------------------------
+rem 7. Criar o arquivo .env local, se ainda nao existir
 rem ------------------------------------------------------
 if not exist ".env" (
     echo [INFO] Arquivo .env nao encontrado.
@@ -100,7 +117,7 @@ if not exist ".env" (
 )
 
 rem ------------------------------------------------------
-rem 7. Impedir tentativa com senha vazia ou de exemplo
+rem 8. Impedir tentativa com senha vazia ou de exemplo
 rem ------------------------------------------------------
 findstr /C:"DB_PASSWORD=preencha_localmente" ".env" >nul 2>&1
 if not errorlevel 1 goto :env_pending
@@ -112,7 +129,7 @@ findstr /R /C:"^DB_PASSWORD=$" ".env" >nul 2>&1
 if not errorlevel 1 goto :env_pending
 
 rem ------------------------------------------------------
-rem 8. Inicializar e validar o banco PostgreSQL
+rem 9. Inicializar e validar o banco PostgreSQL
 rem ------------------------------------------------------
 echo.
 echo [INFO] Inicializando o banco PostgreSQL...
@@ -120,19 +137,23 @@ echo [INFO] Inicializando o banco PostgreSQL...
 if errorlevel 1 goto :database_error
 
 rem ------------------------------------------------------
-rem 9. Finalizacao
+rem 10. Finalizacao
 rem ------------------------------------------------------
 echo.
 echo ======================================================
-echo [OK] Ambiente do BiblioAvisa preparado com sucesso.
+echo [OK] Ambiente completo do BiblioAvisa preparado.
+echo [OK] Python, PostgreSQL, WhatsApp e frontend sincronizados.
 echo ======================================================
 echo.
-echo Agora inicie o sistema pela raiz com:
+echo Agora inicie todo o sistema pela raiz com:
 echo     run.bat
 echo.
-echo Se o projeto for atualizado futuramente, voce pode
- echo executar setup.bat novamente para sincronizar as
- echo dependencias e validar o banco sem apagar seu .env.
+echo O run.bat iniciara a API Python, o frontend React/Vite,
+echo o webhook e o servico WhatsApp no mesmo terminal.
+echo.
+echo Se o projeto for atualizado futuramente, execute
+ echo setup.bat novamente para sincronizar as dependencias
+ echo e validar o banco sem apagar seu .env.
 echo.
 pause
 exit /b 0
@@ -168,6 +189,10 @@ goto :end_error
 echo [ERRO] whatsapp_service\package.json nao foi encontrado.
 goto :end_error
 
+:frontend_package_json_missing
+echo [ERRO] frontend\package.json nao foi encontrado.
+goto :end_error
+
 :venv_error
 echo [ERRO] Nao foi possivel criar o ambiente virtual .venv.
 goto :end_error
@@ -178,6 +203,11 @@ goto :end_error
 
 :npm_install_error
 echo [ERRO] Nao foi possivel instalar as dependencias do WhatsApp.
+echo Confira sua conexao e a instalacao do Node.js/npm.
+goto :end_error
+
+:frontend_npm_install_error
+echo [ERRO] Nao foi possivel instalar as dependencias do frontend.
 echo Confira sua conexao e a instalacao do Node.js/npm.
 goto :end_error
 
