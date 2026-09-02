@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ArrowRight, Database, ServerCog, SquareCode } from 'lucide-react'
+import { ArrowRight, Database, ServerCog, ShieldAlert, SquareCode, WifiOff } from 'lucide-react'
 
-import { demonstrarIntegracao, mensagemErroApi } from '../../services/api'
+import { demonstrarErro, demonstrarIntegracao, mensagemErroApi } from '../../services/api'
 import { somenteDigitos } from '../../utils/masks'
 import { cpfValido, dataBrValida, emailValido, obrigatorio } from '../../utils/validation'
 import Button from '../ui/Button'
@@ -77,6 +77,21 @@ export default function IntegrationDemo() {
       setResultado(resposta)
       setEstado('success')
       setMensagem(resposta.mensagem)
+    } catch (erro) {
+      setEstado('error')
+      setMensagem(mensagemErroApi(erro))
+    }
+  }
+
+  const testarErro = async (tipo) => {
+    setResultado(null)
+    setEstado('loading')
+    setMensagem('Executando cenário de erro controlado...')
+
+    try {
+      await demonstrarErro(tipo)
+      setEstado('warning')
+      setMensagem('O cenário de erro não retornou a falha esperada.')
     } catch (erro) {
       setEstado('error')
       setMensagem(mensagemErroApi(erro))
@@ -201,6 +216,21 @@ export default function IntegrationDemo() {
           </div>
         </div>
       ) : null}
+
+      <div className="integration-error-demo">
+        <div>
+          <strong>Tratamento de erros e acessos</strong>
+          <p>Os botões abaixo geram falhas controladas apenas em ambiente de desenvolvimento.</p>
+        </div>
+        <div className="integration-error-actions">
+          <Button type="button" variant="ghost" onClick={() => testarErro('acesso')} disabled={estado === 'loading'}>
+            <ShieldAlert aria-hidden="true" /> Simular acesso negado
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => testarErro('servico')} disabled={estado === 'loading'}>
+            <WifiOff aria-hidden="true" /> Simular serviço indisponível
+          </Button>
+        </div>
+      </div>
     </section>
   )
 }
