@@ -5,13 +5,18 @@
   --color-white: #ffffff;
   --color-danger: #ff0000;
 
-  /* Cores auxiliares de interface; não vieram das medidas do Figma. */
+  /* Cores auxiliares da interface. */
   --color-page-background: #f2f4ff;
   --color-text: #17171d;
   --color-text-muted: #686a78;
   --color-border: #e2e4ee;
   --color-success: #16803c;
   --color-error: #bf2020;
+
+  /* Tela de acesso: aproximações visuais baseadas no protótipo do Figma. */
+  --color-login-panel: #b9c9f0;
+  --color-login-input: #93f2ef;
+  --color-login-button: #003d78;
 
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 76px;
