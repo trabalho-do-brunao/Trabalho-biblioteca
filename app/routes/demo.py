@@ -84,7 +84,13 @@ class DemonstracaoEntrada(BaseModel):
 @router.post("/integracao")
 def demonstrar_integracao(dados: DemonstracaoEntrada) -> dict[str, object]:
     """Valida/processa os dados e consulta o PostgreSQL sem alterar registros."""
-    diagnostico = testar_conexao()
+    try:
+        diagnostico = testar_conexao()
+    except (ConnectionError, RuntimeError) as erro:
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível acessar o PostgreSQL. Verifique se o banco está iniciado e configurado.",
+        ) from erro
 
     return {
         "status": "ok",
