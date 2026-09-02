@@ -122,7 +122,6 @@
 .ui-tooltip-content {
   position: absolute;
   z-index: 1000;
-  bottom: calc(100% + 9px);
   left: 50%;
   width: max-content;
   max-width: min(280px, 75vw);
@@ -138,6 +137,14 @@
   pointer-events: none;
   transform: translate(-50%, 5px);
   transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.ui-tooltip-top .ui-tooltip-content {
+  bottom: calc(100% + 9px);
+}
+
+.ui-tooltip-bottom .ui-tooltip-content {
+  top: calc(100% + 9px);
 }
 
 .ui-tooltip:hover .ui-tooltip-content,
