@@ -135,4 +135,8 @@ export function demonstrarIntegracao(dados) {
   })
 }
 
+export function demonstrarErro(tipo) {
+  return requisicao(`/api/demo/erro/${tipo}`)
+}
+
 export { API_URL, requisicao }
