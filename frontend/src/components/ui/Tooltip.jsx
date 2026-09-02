@@ -1,7 +1,13 @@
 import { CircleHelp } from 'lucide-react'
 import { cloneElement, isValidElement, useId } from 'react'
 
-export default function Tooltip({ content, label = 'Mais informações', children, className = '' }) {
+export default function Tooltip({
+  content,
+  label = 'Mais informações',
+  children,
+  className = '',
+  position = 'top',
+}) {
   const tooltipId = useId()
 
   const trigger = isValidElement(children)
@@ -20,7 +26,7 @@ export default function Tooltip({ content, label = 'Mais informações', childre
     )
 
   return (
-    <span className={`ui-tooltip ${className}`.trim()}>
+    <span className={`ui-tooltip ui-tooltip-${position} ${className}`.trim()}>
       {trigger}
       <span id={tooltipId} className="ui-tooltip-content" role="tooltip">
         {content}
