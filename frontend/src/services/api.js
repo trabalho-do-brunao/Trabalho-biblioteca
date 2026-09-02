@@ -128,4 +128,11 @@ export function verificarSaudeApi() {
   return requisicao('/api/health')
 }
 
+export function demonstrarIntegracao(dados) {
+  return requisicao('/api/demo/integracao', {
+    method: 'POST',
+    body: JSON.stringify(dados),
+  })
+}
+
 export { API_URL, requisicao }
