@@ -1,14 +1,104 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { LibraryBig } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import Feedback from '../components/ui/Feedback'
+import TextField from '../components/ui/TextField'
+import './login.css'
 
 export default function Login() {
+  const navigate = useNavigate()
+  const [feedback, setFeedback] = useState('')
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    navigate('/dashboard')
+  }
+
+  const showFutureFeature = (feature) => {
+    setFeedback(`${feature} será conectado em uma etapa posterior do projeto.`)
+  }
+
   return (
-    <main className="login-foundation">
-      <div className="login-foundation-card">
-        <span className="login-foundation-brand">BiblioAvisa</span>
-        <h1>Tela de acesso</h1>
-        <p>O layout definitivo do login será implementado na próxima etapa a partir do Figma.</p>
-        <Link to="/dashboard" className="primary-button">Entrar no protótipo</Link>
-      </div>
+    <main className="login-page">
+      <section className="login-visual" aria-label="Ilustração da biblioteca">
+        <div className="login-library-scene">
+          <LibraryBig className="login-library-icon" aria-hidden="true" />
+          <div className="login-library-books" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <p className="login-visual-caption">
+            Organize o acervo, acompanhe empréstimos e mantenha os leitores informados.
+          </p>
+        </div>
+      </section>
+
+      <Card className="login-panel" as="section">
+        <h1 className="login-title">FAÇA LOGIN</h1>
+
+        <form className="login-form" onSubmit={handleSubmit}>
+          <TextField
+            id="login-email"
+            label="E-mail:"
+            type="email"
+            autoComplete="email"
+            placeholder="Digite seu E-mail"
+          />
+
+          <TextField
+            id="login-password"
+            label="Senha:"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Digite sua senha"
+          />
+
+          <div className="login-socials" aria-label="Opções futuras de acesso social">
+            <button
+              className="login-social-button login-social-google"
+              type="button"
+              aria-label="Entrar com Google"
+              onClick={() => showFutureFeature('O acesso com Google')}
+            >
+              G
+            </button>
+            <button
+              className="login-social-button login-social-facebook"
+              type="button"
+              aria-label="Entrar com Facebook"
+              onClick={() => showFutureFeature('O acesso com Facebook')}
+            >
+              f
+            </button>
+          </div>
+
+          <Button className="login-submit" variant="dark" type="submit">
+            Entrar
+          </Button>
+
+          <button
+            className="login-create-account"
+            type="button"
+            onClick={() => showFutureFeature('O cadastro de conta')}
+          >
+            Ou crie sua conta
+          </button>
+
+          {feedback ? (
+            <Feedback className="login-feedback" type="info">
+              {feedback}
+            </Feedback>
+          ) : null}
+        </form>
+      </Card>
     </main>
   )
 }

@@ -1,0 +1,237 @@
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 96px);
+  padding: clamp(24px, 5vw, 72px);
+  background: var(--color-white);
+}
+
+.login-visual {
+  min-height: min(72vh, 720px);
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(9, 0, 255, 0.11), transparent 30%),
+    linear-gradient(145deg, #f8f8ff 0%, #eef1ff 100%);
+}
+
+.login-visual::before,
+.login-visual::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(9, 0, 255, 0.07);
+}
+
+.login-visual::before {
+  width: 280px;
+  height: 280px;
+  top: -120px;
+  left: -80px;
+}
+
+.login-visual::after {
+  width: 360px;
+  height: 360px;
+  right: -150px;
+  bottom: -150px;
+}
+
+.login-library-scene {
+  position: relative;
+  z-index: 1;
+  width: min(84%, 620px);
+  display: grid;
+  place-items: center;
+  gap: 18px;
+  color: var(--color-primary-dark);
+}
+
+.login-library-icon {
+  width: clamp(180px, 23vw, 340px);
+  height: clamp(180px, 23vw, 340px);
+  stroke-width: 1.35;
+}
+
+.login-library-books {
+  width: min(100%, 520px);
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+
+.login-library-books span {
+  display: block;
+  min-height: 90px;
+  border-radius: 7px 7px 3px 3px;
+  background: var(--color-primary);
+  box-shadow: inset 0 -12px 0 rgba(255, 255, 255, 0.16);
+}
+
+.login-library-books span:nth-child(2n) {
+  min-height: 125px;
+  background: #51d9d2;
+}
+
+.login-library-books span:nth-child(3n) {
+  min-height: 155px;
+  background: #e46cae;
+}
+
+.login-library-books span:nth-child(5n) {
+  min-height: 110px;
+  background: #f0b95a;
+}
+
+.login-visual-caption {
+  margin: 0;
+  max-width: 500px;
+  text-align: center;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.login-panel {
+  width: min(100%, 470px);
+  justify-self: center;
+  padding: clamp(28px, 4vw, 46px);
+  border: 0;
+  background: var(--color-login-panel);
+  box-shadow: 0 24px 60px rgba(5, 0, 151, 0.14);
+}
+
+.login-title {
+  margin: 0 0 28px;
+  color: var(--color-primary);
+  text-align: center;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.login-form {
+  display: grid;
+  gap: 18px;
+}
+
+.login-socials {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  margin: 4px 0 0;
+}
+
+.login-social-button {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-white);
+  box-shadow: 0 7px 18px rgba(5, 0, 151, 0.12);
+  font-weight: 900;
+  font-size: 1.5rem;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-social-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(5, 0, 151, 0.18);
+}
+
+.login-social-google {
+  color: #4285f4;
+}
+
+.login-social-facebook {
+  color: #1877f2;
+}
+
+.login-submit {
+  width: min(100%, 230px);
+  justify-self: center;
+  margin-top: 2px;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.login-create-account {
+  border: 0;
+  padding: 2px 0;
+  color: var(--color-primary);
+  background: transparent;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.login-create-account:hover {
+  text-decoration: underline;
+}
+
+.login-feedback {
+  margin-top: 4px;
+}
+
+@media (max-width: 980px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 28px;
+  }
+
+  .login-visual {
+    min-height: 280px;
+  }
+
+  .login-library-icon {
+    width: 180px;
+    height: 180px;
+  }
+
+  .login-library-books {
+    width: min(80%, 360px);
+  }
+
+  .login-library-books span {
+    min-height: 54px;
+  }
+
+  .login-library-books span:nth-child(2n) {
+    min-height: 72px;
+  }
+
+  .login-library-books span:nth-child(3n) {
+    min-height: 90px;
+  }
+
+  .login-library-books span:nth-child(5n) {
+    min-height: 66px;
+  }
+}
+
+@media (max-width: 620px) {
+  .login-page {
+    padding: 18px;
+  }
+
+  .login-visual {
+    display: none;
+  }
+
+  .login-panel {
+    padding: 28px 22px;
+    border-radius: 20px;
+  }
+
+  .login-socials {
+    gap: 32px;
+  }
+}
