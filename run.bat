@@ -9,6 +9,7 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
+rem O inicializador Python sobe API, frontend, webhook, Baileys e automacao opcional.
 ".venv\Scripts\python.exe" "scripts\iniciar_servicos.py"
 set "EXIT_CODE=%ERRORLEVEL%"
 

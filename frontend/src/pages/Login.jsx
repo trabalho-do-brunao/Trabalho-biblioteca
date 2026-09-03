@@ -6,15 +6,39 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Feedback from '../components/ui/Feedback'
 import TextField from '../components/ui/TextField'
+import { emailValido, obrigatorio } from '../utils/validation'
 import './login.css'
 
 export default function Login() {
   const navigate = useNavigate()
   const [feedback, setFeedback] = useState('')
+  const [form, setForm] = useState({ email: '', senha: '' })
+  const [errors, setErrors] = useState({})
+
+  const atualizarCampo = (campo) => (event) => {
+    setForm((atual) => ({ ...atual, [campo]: event.target.value }))
+    setErrors((atual) => ({ ...atual, [campo]: '' }))
+  }
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    navigate('/dashboard')
+    const novosErros = {}
+
+    if (!obrigatorio(form.email)) {
+      novosErros.email = 'Informe o e-mail.'
+    } else if (!emailValido(form.email)) {
+      novosErros.email = 'Digite um e-mail válido, por exemplo nome@dominio.com.'
+    }
+
+    if (!obrigatorio(form.senha)) {
+      novosErros.senha = 'Informe a senha.'
+    }
+
+    setErrors(novosErros)
+
+    if (Object.keys(novosErros).length === 0) {
+      navigate('/dashboard')
+    }
   }
 
   const showFutureFeature = (feature) => {
@@ -44,13 +68,17 @@ export default function Login() {
       <Card className="login-panel" as="section">
         <h1 className="login-title">FAÇA LOGIN</h1>
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
           <TextField
             id="login-email"
             label="E-mail:"
             type="email"
             autoComplete="email"
             placeholder="Digite seu E-mail"
+            value={form.email}
+            onChange={atualizarCampo('email')}
+            error={errors.email}
+            tooltip="Use um endereço no formato nome@dominio.com. Nesta etapa o login ainda é apenas de desenvolvimento."
           />
 
           <TextField
@@ -59,6 +87,10 @@ export default function Login() {
             type="password"
             autoComplete="current-password"
             placeholder="Digite sua senha"
+            value={form.senha}
+            onChange={atualizarCampo('senha')}
+            error={errors.senha}
+            tooltip="Campo obrigatório para validar o formulário. A autenticação real será implementada em uma etapa específica."
           />
 
           <div className="login-socials" aria-label="Opções futuras de acesso social">

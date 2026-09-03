@@ -1,24 +1,32 @@
 import { Bell, CircleUserRound, Menu } from 'lucide-react'
 
+import Tooltip from '../ui/Tooltip'
+
 export default function Topbar({ onToggleSidebar }) {
   return (
     <header className="topbar">
-      <button
-        type="button"
-        className="topbar-icon-button topbar-menu"
-        onClick={onToggleSidebar}
-        aria-label="Abrir ou recolher menu lateral"
-      >
-        <Menu />
-      </button>
+      <Tooltip content="Abrir ou recolher o menu lateral" position="bottom">
+        <button
+          type="button"
+          className="topbar-icon-button topbar-menu"
+          onClick={onToggleSidebar}
+          aria-label="Abrir ou recolher menu lateral"
+        >
+          <Menu />
+        </button>
+      </Tooltip>
 
       <div className="topbar-actions">
-        <button type="button" className="topbar-icon-button" aria-label="Notificações" title="Notificações">
-          <Bell />
-        </button>
-        <button type="button" className="topbar-icon-button" aria-label="Perfil" title="Perfil">
-          <CircleUserRound />
-        </button>
+        <Tooltip content="Notificações do sistema" position="bottom">
+          <button type="button" className="topbar-icon-button" aria-label="Notificações">
+            <Bell />
+          </button>
+        </Tooltip>
+        <Tooltip content="Perfil e opções da conta" position="bottom">
+          <button type="button" className="topbar-icon-button" aria-label="Perfil">
+            <CircleUserRound />
+          </button>
+        </Tooltip>
       </div>
     </header>
   )
