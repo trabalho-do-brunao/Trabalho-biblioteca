@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pencil, Plus, Search, UserCheck, UserX } from 'lucide-react'
 
 import UsuarioFormModal from '../components/usuarios/UsuarioFormModal'
@@ -91,7 +91,7 @@ export default function Usuarios() {
     }
   }
 
-  const columns = useMemo(() => [
+  const columns = [
     { key: 'nome', label: 'Nome' },
     {
       key: 'telefone',
@@ -139,7 +139,7 @@ export default function Usuarios() {
         </div>
       ),
     },
-  ], [alterandoStatus])
+  ]
 
   return (
     <section className="page usuarios-page">
