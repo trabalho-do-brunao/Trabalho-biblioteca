@@ -1,0 +1,168 @@
+name: CI/CD BiblioAvisa
+
+on:
+  push:
+    branches: [repositorio-principal]
+  pull_request:
+    branches: [repositorio-principal]
+
+permissions:
+  contents: read
+
+jobs:
+  testar:
+    name: testar
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ecf_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ecf_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências do frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Rodar testes unitários JavaScript
+        working-directory: frontend
+        run: npm run test:unit
+
+      - name: Rodar testes de qualidade do frontend
+        working-directory: frontend
+        run: npm run test:quality
+
+      - name: Gerar build React
+        working-directory: frontend
+        run: npm run build
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependências Python
+        run: pip install -r requirements.txt
+
+      - name: Validar sintaxe Python
+        run: python -m compileall -q app scripts
+
+      - name: Preparar configuração de teste
+        shell: bash
+        run: |
+          cat > .env <<'EOF'
+          APP_ENV=test
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_NAME=ecf_ci
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          DB_MAINTENANCE_NAME=postgres
+          EOF
+
+      - name: Inicializar PostgreSQL de CI
+        run: python scripts/init_db.py
+
+      - name: Testar integração Python com PostgreSQL
+        run: python scripts/test_db.py
+
+  construir:
+    name: construir-imagem
+    needs: testar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validar build da imagem Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: biblioavisa:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publicar:
+    name: publicar-docker-hub
+    needs: [testar, construir]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/repositorio-principal' &&
+      vars.CD_ENABLED == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticar no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Gerar tags da imagem
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/biblioavisa
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Construir e publicar imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: deploy-render
+    needs: publicar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Acionar deploy automático no Render
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        shell: bash
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Secret RENDER_DEPLOY_HOOK não configurado."
+            exit 1
+          fi
+          curl --fail --show-error --silent --request POST "$RENDER_DEPLOY_HOOK"
+          echo "Deploy solicitado ao Render com sucesso."
