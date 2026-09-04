@@ -83,7 +83,7 @@ As etapas são:
 
 1. checkout do código;
 2. Node 20;
-3. `npm ci`;
+3. `npm install` no frontend;
 4. `npm run test:unit`;
 5. `npm run test:quality`;
 6. `npm run build`;
@@ -94,6 +94,10 @@ As etapas são:
 11. PostgreSQL 17 temporário;
 12. `python scripts/init_db.py`;
 13. `python scripts/test_db.py`.
+
+O projeto ainda não versiona `frontend/package-lock.json`, então o pipeline usa
+`npm install`. Quando o lockfile passar a ser versionado, o recomendado é trocar
+para `npm ci` para builds ainda mais reproduzíveis.
 
 Qualquer comando com código de saída diferente de zero encerra o job. Como os
 jobs seguintes dependem de `testar`, uma falha bloqueia o build/publicação.
@@ -113,13 +117,14 @@ Com isso, um teste vermelho deixa de ser apenas um aviso e passa a impedir o mer
 
 ## Publicação no Docker Hub
 
-Criar no Docker Hub um repositório chamado `biblioavisa` e gerar um Access Token.
-Nunca salvar o token no `.env`, Dockerfile, YAML ou README.
+Criar no Docker Hub um repositório chamado `biblioavisa` e gerar um Personal Access Token
+com permissão suficiente para leitura e escrita da imagem. Nunca salvar o token no
+`.env`, Dockerfile, YAML ou README.
 
 No GitHub, em **Settings > Secrets and variables > Actions > Secrets**, criar:
 
 - `DOCKERHUB_USERNAME`: usuário do Docker Hub;
-- `DOCKERHUB_TOKEN`: Access Token do Docker Hub;
+- `DOCKERHUB_TOKEN`: Personal Access Token do Docker Hub;
 - `RENDER_DEPLOY_HOOK`: URL secreta do Deploy Hook do serviço Render.
 
 Em **Variables**, criar:
@@ -162,8 +167,9 @@ O banco PostgreSQL de produção precisa existir e possuir a estrutura do Biblio
 Depois de criar o serviço, gerar um **Deploy Hook** no Render e salvar a URL no
 Secret `RENDER_DEPLOY_HOOK` do GitHub.
 
-Quando o job `publicar-docker-hub` termina, o job `deploy-render` chama esse hook.
-O Render então baixa `latest` e recria o serviço com a nova imagem.
+Serviços Render baseados em imagem não acompanham automaticamente uma mudança da
+tag `latest`. O job `deploy-render` chama o Deploy Hook após a publicação, fazendo
+o Render baixar a imagem atualizada e recriar o serviço.
 
 ## Segurança
 
@@ -195,6 +201,22 @@ http://127.0.0.1:8000/api/health
 
 As páginas React são servidas pelo mesmo container. Funcionalidades que acessam
 o PostgreSQL exigem que as variáveis `DB_*` sejam fornecidas ao container.
+
+## Dificuldades encontradas durante a implementação
+
+A primeira execução real da PR do CI falhou ainda na configuração do Node. O
+workflow havia sido escrito supondo a existência de `frontend/package-lock.json`
+e tentou habilitar cache do npm usando esse caminho. Como o lockfile não estava
+versionado, o `setup-node` interrompeu o job. A correção foi remover o cache baseado
+em lockfile e usar `npm install`, mantendo o pipeline compatível com a estrutura real.
+
+Na execução seguinte, o novo teste unitário encontrou outro problema: o arquivo
+`validation.js` importava `./masks` sem a extensão `.js`. O Vite resolvia esse caminho,
+mas o runner nativo do Node em modo ESM não. O import foi alterado para `./masks.js`,
+ficando compatível tanto com o Vite quanto com o Node.
+
+Após essas correções, os jobs `testar` e `construir-imagem` concluíram com sucesso,
+incluindo testes JavaScript, build React, Python, PostgreSQL 17 e build Docker.
 
 ## Regra de promoção para produção
 
