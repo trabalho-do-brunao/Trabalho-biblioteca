@@ -4,8 +4,9 @@
 FROM node:20-alpine AS frontend-build
 WORKDIR /build/frontend
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# O frontend ainda não versiona package-lock.json; por isso o build usa npm install.
+COPY frontend/package.json ./
+RUN npm install
 
 COPY frontend/ ./
 # Em produção, quando VITE_API_URL não é informado, o frontend usa /api
