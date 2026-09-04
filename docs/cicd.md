@@ -1,0 +1,206 @@
+# CI/CD do BiblioAvisa
+
+Este documento descreve a integração contínua e o deploy contínuo do BiblioAvisa.
+O fluxo foi inspirado no exercício de GitHub Actions utilizado em aula, mas foi
+adaptado para a arquitetura real do projeto: React/Vite, FastAPI/Python e
+PostgreSQL.
+
+## Fluxo
+
+```text
+feature branch / Pull Request
+        |
+        v
+GitHub Actions - job testar
+        |
+        +-- Node 20
+        +-- testes unitários JavaScript
+        +-- testes de máscaras/validações
+        +-- build do React
+        +-- Python 3.12
+        +-- validação de sintaxe
+        +-- PostgreSQL 17 temporário
+        +-- inicialização e teste da integração com o banco
+        |
+        v
+GitHub Actions - job construir-imagem
+        |
+        +-- Docker Buildx
+        +-- build completo do Dockerfile
+        |
+        v
+merge/push em repositorio-principal
+        |
+        v
+publicar-docker-hub (quando CD_ENABLED=true)
+        |
+        +-- autenticação por Secrets
+        +-- biblioavisa:latest
+        +-- biblioavisa:sha-<commit>
+        |
+        v
+deploy-render
+        |
+        +-- Render Deploy Hook
+        v
+produção
+```
+
+## Arquivos principais
+
+- `.github/workflows/cicd.yml`: pipeline CI/CD.
+- `Dockerfile`: imagem full-stack do BiblioAvisa.
+- `.dockerignore`: impede que segredos e arquivos locais entrem no contexto Docker.
+- `frontend/scripts/validation.test.mjs`: suíte unitária com `node:test`.
+- `frontend/src/services/api.js`: usa `127.0.0.1:8000` em desenvolvimento e a mesma origem da página em produção.
+- `app/frontend.py`: entrega o build do React pelo FastAPI quando `frontend_dist` existe.
+
+## Dockerfile
+
+O Dockerfile é multi-stage:
+
+1. `node:20-alpine` instala o frontend, roda os testes e executa `vite build`.
+2. `python:3.12-slim` instala o backend e recebe apenas o conteúdo final de `dist`.
+
+A aplicação final expõe uma única porta. O FastAPI responde `/api/*` e também
+entrega o React compilado. Isso reduz a quantidade de serviços necessária para a
+primeira publicação do projeto.
+
+O WhatsApp/Baileys não é incluído nesta imagem web. Quando for publicado em
+infraestrutura real, deve ser tratado como worker/serviço separado porque mantém
+uma sessão persistente própria.
+
+## CI - job `testar`
+
+O workflow é disparado por:
+
+- `pull_request` direcionado para `repositorio-principal`;
+- `push` em `repositorio-principal`.
+
+O nome do check principal é `testar`, permitindo usá-lo em um Ruleset da branch.
+
+As etapas são:
+
+1. checkout do código;
+2. Node 20;
+3. `npm ci`;
+4. `npm run test:unit`;
+5. `npm run test:quality`;
+6. `npm run build`;
+7. Python 3.12;
+8. instalação de `requirements.txt`;
+9. `python -m compileall -q app scripts`;
+10. criação de um `.env` exclusivamente de CI;
+11. PostgreSQL 17 temporário;
+12. `python scripts/init_db.py`;
+13. `python scripts/test_db.py`.
+
+Qualquer comando com código de saída diferente de zero encerra o job. Como os
+jobs seguintes dependem de `testar`, uma falha bloqueia o build/publicação.
+
+## Proteção de `repositorio-principal`
+
+Criar um Ruleset em **Settings > Rules > Rulesets** com:
+
+- Target: `repositorio-principal`;
+- Require a pull request before merging;
+- Require status checks to pass;
+- check obrigatório: `testar`;
+- Require branches to be up to date before merging;
+- Block force pushes.
+
+Com isso, um teste vermelho deixa de ser apenas um aviso e passa a impedir o merge.
+
+## Publicação no Docker Hub
+
+Criar no Docker Hub um repositório chamado `biblioavisa` e gerar um Access Token.
+Nunca salvar o token no `.env`, Dockerfile, YAML ou README.
+
+No GitHub, em **Settings > Secrets and variables > Actions > Secrets**, criar:
+
+- `DOCKERHUB_USERNAME`: usuário do Docker Hub;
+- `DOCKERHUB_TOKEN`: Access Token do Docker Hub;
+- `RENDER_DEPLOY_HOOK`: URL secreta do Deploy Hook do serviço Render.
+
+Em **Variables**, criar:
+
+- `CD_ENABLED=true` somente depois que Docker Hub e Render estiverem configurados.
+
+Enquanto `CD_ENABLED` não existir ou não for `true`, os testes e o build Docker
+continuam funcionando, mas publicação e deploy ficam intencionalmente desativados.
+
+## Tags da imagem
+
+Cada publicação em `repositorio-principal` gera:
+
+- `<usuario>/biblioavisa:latest`;
+- `<usuario>/biblioavisa:sha-<commit>`.
+
+`latest` representa a versão atual de produção. A tag de SHA permite identificar
+e restaurar exatamente a imagem correspondente a um commit.
+
+## Render
+
+Criar um Web Service no Render baseado em **Existing Image** e apontar para:
+
+```text
+docker.io/<usuario-docker-hub>/biblioavisa:latest
+```
+
+Configurar no serviço as variáveis de produção, principalmente:
+
+- `APP_ENV=production`;
+- `DB_HOST`;
+- `DB_PORT`;
+- `DB_NAME`;
+- `DB_USER`;
+- `DB_PASSWORD`.
+
+Esses valores pertencem ao ambiente do Render e não devem ser versionados no Git.
+O banco PostgreSQL de produção precisa existir e possuir a estrutura do BiblioAvisa.
+
+Depois de criar o serviço, gerar um **Deploy Hook** no Render e salvar a URL no
+Secret `RENDER_DEPLOY_HOOK` do GitHub.
+
+Quando o job `publicar-docker-hub` termina, o job `deploy-render` chama esse hook.
+O Render então baixa `latest` e recria o serviço com a nova imagem.
+
+## Segurança
+
+O `.dockerignore` exclui, entre outros:
+
+- `.env` e arquivos locais de ambiente;
+- `.venv`;
+- `node_modules`;
+- sessão `whatsapp_service/auth_info`;
+- arquivos temporários e logs.
+
+Credenciais de produção ficam somente em Secrets/variáveis do provedor.
+
+## Como testar localmente o Docker
+
+Na raiz do projeto:
+
+```bash
+docker build -t biblioavisa:local .
+docker run --rm -p 8000:8000 biblioavisa:local
+```
+
+Depois abrir:
+
+```text
+http://127.0.0.1:8000/
+http://127.0.0.1:8000/api/health
+```
+
+As páginas React são servidas pelo mesmo container. Funcionalidades que acessam
+o PostgreSQL exigem que as variáveis `DB_*` sejam fornecidas ao container.
+
+## Regra de promoção para produção
+
+```text
+código -> PR -> testar -> construir-imagem -> merge -> publicar -> deploy
+```
+
+Nenhuma etapa de publicação deve executar antes dos testes. Em caso de falha, a
+imagem nova não é enviada e o Render permanece executando a versão anterior.
