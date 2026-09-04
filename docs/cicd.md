@@ -32,19 +32,23 @@ GitHub Actions - job construir-imagem
 merge/push em repositorio-principal
         |
         v
-publicar-docker-hub (quando CD_ENABLED=true)
+publicar-docker-hub (quando PUBLISH_ENABLED=true)
         |
         +-- autenticação por Secrets
         +-- biblioavisa:latest
         +-- biblioavisa:sha-<commit>
         |
         v
-deploy-render
+deploy-render (quando DEPLOY_ENABLED=true)
         |
         +-- Render Deploy Hook
         v
 produção
 ```
+
+O workflow também possui `workflow_dispatch`, permitindo executar o pipeline
+manualmente pela aba **Actions > CI/CD BiblioAvisa > Run workflow** depois que a
+configuração estiver presente em `repositorio-principal`.
 
 ## Arquivos principais
 
@@ -75,7 +79,8 @@ uma sessão persistente própria.
 O workflow é disparado por:
 
 - `pull_request` direcionado para `repositorio-principal`;
-- `push` em `repositorio-principal`.
+- `push` em `repositorio-principal`;
+- execução manual por `workflow_dispatch`.
 
 O nome do check principal é `testar`, permitindo usá-lo em um Ruleset da branch.
 
@@ -125,14 +130,26 @@ No GitHub, em **Settings > Secrets and variables > Actions > Secrets**, criar:
 
 - `DOCKERHUB_USERNAME`: usuário do Docker Hub;
 - `DOCKERHUB_TOKEN`: Personal Access Token do Docker Hub;
-- `RENDER_DEPLOY_HOOK`: URL secreta do Deploy Hook do serviço Render.
+- `RENDER_DEPLOY_HOOK`: URL secreta do Deploy Hook do serviço Render, adicionada somente depois da criação do serviço.
 
-Em **Variables**, criar:
+Em **Variables**, usar duas chaves separadas:
 
-- `CD_ENABLED=true` somente depois que Docker Hub e Render estiverem configurados.
+- `PUBLISH_ENABLED=true`: habilita a publicação no Docker Hub;
+- `DEPLOY_ENABLED=true`: habilita o disparo do deploy no Render.
 
-Enquanto `CD_ENABLED` não existir ou não for `true`, os testes e o build Docker
-continuam funcionando, mas publicação e deploy ficam intencionalmente desativados.
+A separação evita uma dependência circular na primeira configuração. O processo é:
+
+1. configurar Docker Hub e os Secrets `DOCKERHUB_*`;
+2. definir `PUBLISH_ENABLED=true` e deixar `DEPLOY_ENABLED=false`;
+3. executar o workflow em `repositorio-principal` para publicar a primeira imagem;
+4. criar o serviço Render apontando para a imagem `latest` já existente;
+5. gerar o Deploy Hook e salvá-lo em `RENDER_DEPLOY_HOOK`;
+6. definir `DEPLOY_ENABLED=true`;
+7. a partir daí, cada execução aprovada publica a imagem e aciona o deploy.
+
+Enquanto `PUBLISH_ENABLED` não for `true`, testes e build Docker continuam
+funcionando normalmente, mas nenhuma imagem externa é enviada. Enquanto
+`DEPLOY_ENABLED` não for `true`, a imagem pode ser publicada sem acionar o Render.
 
 ## Tags da imagem
 
