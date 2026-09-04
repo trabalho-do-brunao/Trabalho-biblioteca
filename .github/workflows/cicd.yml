@@ -5,6 +5,7 @@ on:
     branches: [repositorio-principal]
   pull_request:
     branches: [repositorio-principal]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -110,9 +111,8 @@ jobs:
     name: publicar-docker-hub
     needs: [testar, construir]
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/repositorio-principal' &&
-      vars.CD_ENABLED == 'true'
+      vars.PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -150,6 +150,9 @@ jobs:
   deploy:
     name: deploy-render
     needs: publicar
+    if: >-
+      github.ref == 'refs/heads/repositorio-principal' &&
+      vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
 
     steps:
