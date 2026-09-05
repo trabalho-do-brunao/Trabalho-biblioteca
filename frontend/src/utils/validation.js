@@ -1,4 +1,4 @@
-import { somenteDigitos } from './masks'
+import { somenteDigitos } from './masks.js'
 
 export function obrigatorio(valor) {
   return String(valor ?? '').trim().length > 0
