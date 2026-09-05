@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test:unit": "node --test scripts/*.test.mjs",
     "test:quality": "node scripts/test-quality.mjs"
   },
   "dependencies": {

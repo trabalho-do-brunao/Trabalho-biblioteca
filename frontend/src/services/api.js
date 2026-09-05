@@ -1,4 +1,5 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+const API_PADRAO = import.meta.env.PROD ? '' : 'http://127.0.0.1:8000'
+const API_URL = (import.meta.env.VITE_API_URL ?? API_PADRAO).replace(/\/$/, '')
 const DEFAULT_TIMEOUT_MS = 10000
 
 export class ApiError extends Error {
