@@ -8,6 +8,7 @@ Este repositório integra dois trabalhos acadêmicos relacionados à automação
 
 ## Trabalho 1 — Automação de Processos
 
+
 ### Integrantes do grupo
 
 - Guilherme Granemann Benvenutti
