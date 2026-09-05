@@ -25,6 +25,26 @@ export function mascaraTelefoneBr(valor = '') {
     .replace(/(\d{5})(\d)/, '$1-$2')
 }
 
+export function mascaraTelefoneFlexivel(valor = '') {
+  const texto = String(valor).trimStart()
+  if (texto.startsWith('+')) {
+    return `+${somenteDigitos(texto).slice(0, 15)}`
+  }
+  if (texto.startsWith('00')) {
+    return `00${somenteDigitos(texto).slice(2, 17)}`
+  }
+  return mascaraTelefoneBr(texto)
+}
+
+export function formatarTelefoneArmazenado(valor = '') {
+  const digitos = somenteDigitos(valor)
+  if (digitos.startsWith('55') && [12, 13].includes(digitos.length)) {
+    const nacional = digitos.slice(2)
+    return `+55 ${mascaraTelefoneBr(nacional)}`
+  }
+  return digitos ? `+${digitos}` : '—'
+}
+
 export function mascaraDataBr(valor = '') {
   return somenteDigitos(valor)
     .slice(0, 8)
@@ -35,6 +55,7 @@ export function mascaraDataBr(valor = '') {
 export const mascaras = {
   cpf: mascaraCpf,
   telefoneBr: mascaraTelefoneBr,
+  telefoneFlexivel: mascaraTelefoneFlexivel,
   dataBr: mascaraDataBr,
 }
 

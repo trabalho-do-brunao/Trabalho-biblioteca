@@ -31,45 +31,40 @@ def validar_nome(nome: str) -> str:
 def normalizar_telefone(telefone: str) -> str:
     """Retorna o telefone somente com dígitos e código do país.
 
-    Para números brasileiros com DDD informados sem o código do país,
-    acrescenta automaticamente o código 55. O formato armazenado serve
-    como base para a integração com o WhatsApp.
+    Números brasileiros informados apenas com DDD + número recebem o código 55.
+    Quando o usuário informa explicitamente ``+`` ou ``00`` no início, o código
+    internacional é preservado e não é reinterpretado como número brasileiro.
     """
-    digitos = re.sub(r"\D", "", telefone or "")
+    entrada = (telefone or "").strip()
+    internacional_explicito = entrada.startswith("+") or entrada.startswith("00")
+    digitos = re.sub(r"\D", "", entrada)
 
-    if digitos.startswith("00"):
+    if entrada.startswith("00"):
         digitos = digitos[2:]
 
-    if len(digitos) in (10, 11):
+    if not internacional_explicito and len(digitos) in (10, 11):
         digitos = "55" + digitos
 
-    if not 12 <= len(digitos) <= 15:
+    tamanho_minimo = 8 if internacional_explicito else 12
+    if not tamanho_minimo <= len(digitos) <= 15:
         raise ValueError(
-            "Telefone inválido. Informe DDD e número; o código 55 pode ser omitido para números brasileiros."
+            "Telefone inválido. Para números brasileiros, informe DDD e número. "
+            "Para números internacionais, informe o código do país com + ou 00."
         )
 
     return digitos
 
 
 def _candidatos_telefone_busca(telefone: str) -> list[str]:
-    """Gera formas equivalentes úteis para identificar números brasileiros.
-
-    O WhatsApp pode representar algumas contas brasileiras com ou sem o nono
-    dígito no PN canônico. O cadastro continua armazenando um único telefone;
-    esta função só amplia a busca, sem alterar o valor salvo no banco.
-    """
+    """Gera formas equivalentes úteis para identificar números brasileiros."""
     normalizado = normalizar_telefone(telefone)
     candidatos = [normalizado]
 
     if not normalizado.startswith("55"):
         return candidatos
 
-    # 55 + DDD + 9 dígitos: também tenta a forma sem o primeiro 9 do assinante.
     if len(normalizado) == 13 and normalizado[4] == "9":
         candidatos.append(normalizado[:4] + normalizado[5:])
-
-    # 55 + DDD + 8 dígitos: para faixas historicamente usadas por celular,
-    # também tenta a forma moderna com o 9 adicional.
     elif len(normalizado) == 12 and normalizado[4] in {"6", "7", "8", "9"}:
         candidatos.append(normalizado[:4] + "9" + normalizado[4:])
 
@@ -128,6 +123,78 @@ def cadastrar_usuario(
         conexao.close()
 
 
+def atualizar_usuario(
+    usuario_id: int,
+    nome: str,
+    telefone: str,
+    email: str | None = None,
+) -> dict[str, object] | None:
+    """Atualiza os dados editáveis de um usuário e retorna o registro atualizado."""
+    if not isinstance(usuario_id, int) or usuario_id <= 0:
+        raise ValueError("O ID do usuário deve ser um número inteiro positivo.")
+
+    nome_limpo = validar_nome(nome)
+    telefone_normalizado = normalizar_telefone(telefone)
+    email_normalizado = normalizar_email(email)
+    conexao = conectar()
+
+    try:
+        with conexao.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET nome = %s,
+                    telefone = %s,
+                    email = %s
+                WHERE id = %s
+                RETURNING id, nome, telefone, email, ativo, criado_em;
+                """,
+                (nome_limpo, telefone_normalizado, email_normalizado, usuario_id),
+            )
+            registro = cursor.fetchone()
+
+        conexao.commit()
+        return dict(registro) if registro else None
+
+    except UniqueViolation as erro:
+        conexao.rollback()
+        raise UsuarioDuplicadoError(
+            "Já existe um usuário cadastrado com este telefone."
+        ) from erro
+    except psycopg2.Error as erro:
+        conexao.rollback()
+        raise RuntimeError("Não foi possível atualizar o usuário.") from erro
+    finally:
+        conexao.close()
+
+
+def definir_usuario_ativo(usuario_id: int, ativo: bool) -> dict[str, object] | None:
+    """Ativa ou inativa um usuário sem apagar seu histórico."""
+    if not isinstance(usuario_id, int) or usuario_id <= 0:
+        raise ValueError("O ID do usuário deve ser um número inteiro positivo.")
+
+    conexao = conectar()
+    try:
+        with conexao.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET ativo = %s
+                WHERE id = %s
+                RETURNING id, nome, telefone, email, ativo, criado_em;
+                """,
+                (bool(ativo), usuario_id),
+            )
+            registro = cursor.fetchone()
+        conexao.commit()
+        return dict(registro) if registro else None
+    except psycopg2.Error as erro:
+        conexao.rollback()
+        raise RuntimeError("Não foi possível alterar a situação do usuário.") from erro
+    finally:
+        conexao.close()
+
+
 def buscar_usuario_por_id(usuario_id: int) -> dict[str, object] | None:
     """Busca um usuário pelo ID."""
     if not isinstance(usuario_id, int) or usuario_id <= 0:
@@ -176,12 +243,20 @@ def buscar_usuario_por_telefone(telefone: str) -> dict[str, object] | None:
 
 
 def buscar_usuarios_por_nome(nome: str) -> list[dict[str, object]]:
-    """Busca usuários cujo nome contenha o texto informado, sem diferenciar maiúsculas/minúsculas."""
+    """Busca usuários cujo nome contenha o texto informado."""
     termo = " ".join((nome or "").split())
-
     if not termo:
         raise ValueError("Informe um nome para realizar a busca.")
+    return buscar_usuarios(termo, incluir_inativos=True)
 
+
+def buscar_usuarios(termo: str, incluir_inativos: bool = True) -> list[dict[str, object]]:
+    """Pesquisa por ID, nome, telefone ou e-mail."""
+    termo_limpo = " ".join((termo or "").split())
+    if not termo_limpo:
+        return listar_usuarios(apenas_ativos=not incluir_inativos)
+
+    digitos = re.sub(r"\D", "", termo_limpo)
     conexao = conectar()
 
     try:
@@ -190,10 +265,23 @@ def buscar_usuarios_por_nome(nome: str) -> list[dict[str, object]]:
                 """
                 SELECT id, nome, telefone, email, ativo, criado_em
                 FROM usuarios
-                WHERE nome ILIKE %s
+                WHERE (%s OR ativo = TRUE)
+                  AND (
+                    CAST(id AS TEXT) = %s
+                    OR nome ILIKE %s
+                    OR COALESCE(email, '') ILIKE %s
+                    OR (%s <> '' AND telefone LIKE %s)
+                  )
                 ORDER BY nome, id;
                 """,
-                (f"%{termo}%",),
+                (
+                    incluir_inativos,
+                    termo_limpo,
+                    f"%{termo_limpo}%",
+                    f"%{termo_limpo}%",
+                    digitos,
+                    f"%{digitos}%",
+                ),
             )
             return [dict(registro) for registro in cursor.fetchall()]
     finally:
