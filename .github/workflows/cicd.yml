@@ -89,6 +89,9 @@ jobs:
       - name: Testar gestão de livros
         run: python scripts/test_gestao_livros.py
 
+      - name: Testar empréstimos, devoluções e estoque
+        run: python scripts/test_emprestimos_fluxo.py
+
   construir:
     name: construir-imagem
     needs: testar
