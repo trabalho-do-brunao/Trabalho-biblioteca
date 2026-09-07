@@ -16,6 +16,24 @@ class LivroDuplicadoError(ValueError):
     """Indica tentativa de cadastrar um ISBN que já existe no acervo."""
 
 
+CAMPOS_LIVRO = """
+    id,
+    titulo,
+    subtitulo,
+    autor,
+    isbn,
+    google_books_id,
+    editora,
+    data_publicacao,
+    descricao,
+    numero_paginas,
+    url_capa,
+    quantidade_total,
+    quantidade_disponivel,
+    criado_em
+"""
+
+
 def _texto_limitado(valor: object, limite: int) -> str | None:
     if valor is None:
         return None
@@ -27,6 +45,71 @@ def _texto_limitado(valor: object, limite: int) -> str | None:
     return texto[:limite]
 
 
+def listar_livros(limite: int = 500) -> list[dict[str, object]]:
+    """Lista o acervo real ordenado por título."""
+    limite_seguro = max(1, min(int(limite), 1000))
+    conexao = conectar()
+
+    try:
+        with conexao.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                f"""
+                SELECT {CAMPOS_LIVRO}
+                FROM livros
+                ORDER BY titulo, id
+                LIMIT %s;
+                """,
+                (limite_seguro,),
+            )
+            return [dict(item) for item in cursor.fetchall()]
+    finally:
+        conexao.close()
+
+
+def buscar_livros(termo: str, limite: int = 200) -> list[dict[str, object]]:
+    """Pesquisa por ID, título, autor, ISBN ou editora sem duplicar regras no frontend."""
+    busca = str(termo or "").strip()
+    if not busca:
+        return listar_livros(limite=limite)
+
+    limite_seguro = max(1, min(int(limite), 500))
+    padrao = f"%{busca}%"
+    id_busca = int(busca) if busca.isdigit() else None
+    isbn_busca = "".join(caractere for caractere in busca.upper() if caractere.isdigit() or caractere == "X")
+
+    conexao = conectar()
+    try:
+        with conexao.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                f"""
+                SELECT {CAMPOS_LIVRO}
+                FROM livros
+                WHERE (%s::INTEGER IS NOT NULL AND id = %s)
+                   OR titulo ILIKE %s
+                   OR COALESCE(autor, '') ILIKE %s
+                   OR COALESCE(editora, '') ILIKE %s
+                   OR isbn ILIKE %s
+                   OR (%s <> '' AND isbn ILIKE %s)
+                ORDER BY titulo, id
+                LIMIT %s;
+                """,
+                (
+                    id_busca,
+                    id_busca,
+                    padrao,
+                    padrao,
+                    padrao,
+                    padrao,
+                    isbn_busca,
+                    f"%{isbn_busca}%",
+                    limite_seguro,
+                ),
+            )
+            return [dict(item) for item in cursor.fetchall()]
+    finally:
+        conexao.close()
+
+
 def buscar_livro_por_isbn(isbn: str) -> dict[str, object] | None:
     """Retorna um livro cadastrado pelo ISBN ou ``None`` se ele não existir."""
     isbn_normalizado = normalizar_isbn(isbn)
@@ -35,22 +118,8 @@ def buscar_livro_por_isbn(isbn: str) -> dict[str, object] | None:
     try:
         with conexao.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                """
-                SELECT
-                    id,
-                    titulo,
-                    subtitulo,
-                    autor,
-                    isbn,
-                    google_books_id,
-                    editora,
-                    data_publicacao,
-                    descricao,
-                    numero_paginas,
-                    url_capa,
-                    quantidade_total,
-                    quantidade_disponivel,
-                    criado_em
+                f"""
+                SELECT {CAMPOS_LIVRO}
                 FROM livros
                 WHERE isbn = %s;
                 """,
