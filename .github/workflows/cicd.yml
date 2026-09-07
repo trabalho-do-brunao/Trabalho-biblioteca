@@ -86,6 +86,9 @@ jobs:
       - name: Testar integração Python com PostgreSQL
         run: python scripts/test_db.py
 
+      - name: Testar gestão de livros
+        run: python scripts/test_gestao_livros.py
+
   construir:
     name: construir-imagem
     needs: testar
