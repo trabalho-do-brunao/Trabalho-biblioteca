@@ -35,6 +35,24 @@ class DevolucaoEntrada(BaseModel):
     data_devolucao: date | None = None
 
 
+def _situacao_atual(emprestimos: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Deriva a situação exibida pela data atual sem alterar o histórico salvo no banco."""
+    hoje = date.today()
+    resultado: list[dict[str, object]] = []
+
+    for item in emprestimos:
+        registro = dict(item)
+        prazo = registro.get("data_prevista_devolucao")
+        devolvido = registro.get("status") == "devolvido" or registro.get("data_devolucao") is not None
+
+        if not devolvido and isinstance(prazo, date):
+            registro["status"] = "atrasado" if prazo < hoje else "ativo"
+
+        resultado.append(registro)
+
+    return resultado
+
+
 def _erro_operacao(erro: Exception) -> HTTPException:
     if isinstance(erro, (UsuarioNaoEncontradoError, LivroNaoEncontradoError, EmprestimoNaoEncontradoError)):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(erro))
@@ -57,7 +75,7 @@ def _erro_operacao(erro: Exception) -> HTTPException:
 def listar_ativos(usuario_id: int | None = Query(default=None, ge=1)) -> dict[str, object]:
     """Lista empréstimos ainda em aberto, opcionalmente filtrados por usuário."""
     try:
-        emprestimos = buscar_emprestimos_ativos(usuario_id)
+        emprestimos = _situacao_atual(buscar_emprestimos_ativos(usuario_id))
         return {"emprestimos": emprestimos, "total": len(emprestimos)}
     except Exception as erro:
         raise _erro_operacao(erro) from erro
@@ -67,7 +85,7 @@ def listar_ativos(usuario_id: int | None = Query(default=None, ge=1)) -> dict[st
 def listar_historico(usuario_id: int | None = Query(default=None, ge=1)) -> dict[str, object]:
     """Lista o histórico de empréstimos, incluindo devoluções concluídas."""
     try:
-        emprestimos = buscar_historico_emprestimos(usuario_id)
+        emprestimos = _situacao_atual(buscar_historico_emprestimos(usuario_id))
         return {"emprestimos": emprestimos, "total": len(emprestimos)}
     except Exception as erro:
         raise _erro_operacao(erro) from erro

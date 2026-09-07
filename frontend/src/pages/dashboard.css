@@ -1,0 +1,320 @@
+.dashboard-page {
+  display: grid;
+  gap: 22px;
+}
+
+.dashboard-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.dashboard-header .ui-button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.dashboard-header .ui-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dashboard-metric {
+  display: flex;
+  min-width: 0;
+  gap: 14px;
+  align-items: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 18px;
+  color: var(--color-text);
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.dashboard-metric:hover {
+  transform: translateY(-2px);
+  border-color: rgba(9, 0, 255, 0.22);
+  box-shadow: 0 12px 34px rgba(23, 23, 29, 0.11);
+}
+
+.dashboard-metric:focus-visible,
+.dashboard-table-link:focus-visible,
+.dashboard-text-action:focus-visible,
+.dashboard-shortcuts button:focus-visible {
+  outline: 3px solid rgba(9, 0, 255, 0.2);
+  outline-offset: 2px;
+}
+
+.dashboard-metric-icon,
+.dashboard-panel-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 13px;
+}
+
+.dashboard-metric-icon {
+  width: 46px;
+  height: 46px;
+}
+
+.dashboard-metric-icon svg,
+.dashboard-panel-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dashboard-metric-primary .dashboard-metric-icon {
+  color: var(--color-primary);
+  background: rgba(9, 0, 255, 0.09);
+}
+
+.dashboard-metric-warning .dashboard-metric-icon {
+  color: #946000;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.dashboard-metric-danger .dashboard-metric-icon {
+  color: var(--color-error);
+  background: rgba(191, 32, 32, 0.1);
+}
+
+.dashboard-metric-success .dashboard-metric-icon {
+  color: var(--color-success);
+  background: rgba(22, 128, 60, 0.1);
+}
+
+.dashboard-metric-content {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.dashboard-metric-label {
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.dashboard-metric strong {
+  font-size: clamp(1.65rem, 2.8vw, 2.25rem);
+  line-height: 1;
+}
+
+.dashboard-metric small {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 18px;
+  align-items: start;
+}
+
+.dashboard-panel {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 20px;
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-panel-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.dashboard-panel-header > div:first-child {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+}
+
+.dashboard-panel-header.compact > div:first-child {
+  display: block;
+}
+
+.dashboard-panel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.dashboard-panel-header p {
+  margin: 3px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.dashboard-panel-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary-dark);
+  background: rgba(9, 0, 255, 0.07);
+}
+
+.dashboard-text-action,
+.dashboard-table-link {
+  border: 0;
+  padding: 0;
+  color: var(--color-primary);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.dashboard-text-action {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+}
+
+.dashboard-table-link {
+  text-align: left;
+}
+
+.dashboard-table-link:hover,
+.dashboard-text-action:hover {
+  text-decoration: underline;
+}
+
+.dashboard-status {
+  display: inline-flex;
+  min-width: 100px;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dashboard-status.atrasado {
+  color: #8f1f1f;
+  background: #fde1e1;
+}
+
+.dashboard-status.vence_hoje {
+  color: #7a4b00;
+  background: #fff0c7;
+}
+
+.dashboard-status.proximo {
+  color: var(--color-primary-dark);
+  background: rgba(9, 0, 255, 0.08);
+}
+
+.dashboard-shortcuts {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-shortcuts .dashboard-panel-header {
+  margin-bottom: 4px;
+}
+
+.dashboard-shortcuts > button {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--color-text);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.dashboard-shortcuts > button:hover {
+  border-color: rgba(9, 0, 255, 0.2);
+  background: rgba(9, 0, 255, 0.035);
+}
+
+.dashboard-shortcuts > button > svg {
+  width: 22px;
+  height: 22px;
+  justify-self: center;
+  color: var(--color-primary-dark);
+}
+
+.dashboard-shortcuts > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dashboard-shortcuts strong {
+  font-size: 0.88rem;
+}
+
+.dashboard-shortcuts small {
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-shortcuts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dashboard-shortcuts .dashboard-panel-header {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-header,
+  .dashboard-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-header .ui-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-metrics,
+  .dashboard-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-shortcuts .dashboard-panel-header {
+    grid-column: auto;
+  }
+
+  .dashboard-panel {
+    padding: 16px;
+  }
+}
