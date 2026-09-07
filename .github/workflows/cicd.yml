@@ -95,6 +95,9 @@ jobs:
       - name: Testar indicadores do dashboard
         run: python scripts/test_dashboard.py
 
+      - name: Testar histórico do WhatsApp
+        run: python scripts/test_whatsapp_historico.py
+
   construir:
     name: construir-imagem
     needs: testar
