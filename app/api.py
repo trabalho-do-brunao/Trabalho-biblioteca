@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app.frontend import configurar_frontend_producao
 from app.routes.demo import router as demo_router
+from app.routes.livros import router as livros_router
 from app.routes.usuarios import router as usuarios_router
 
 
@@ -88,6 +89,7 @@ def health() -> dict[str, str]:
 
 app.include_router(demo_router)
 app.include_router(usuarios_router)
+app.include_router(livros_router)
 
 # Em desenvolvimento o Vite continua em :5173. Na imagem Docker o diretório
 # frontend_dist existe e o mesmo FastAPI passa a entregar a SPA compilada.
