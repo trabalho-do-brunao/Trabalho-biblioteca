@@ -1,0 +1,306 @@
+.livros-page {
+  position: relative;
+}
+
+.livros-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.livros-header .ui-button,
+.livros-isbn-form .ui-button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.livros-header .ui-button svg,
+.livros-isbn-form .ui-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.livros-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.livros-search {
+  display: flex;
+  width: min(100%, 620px);
+  min-height: 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-white);
+}
+
+.livros-search:focus-within {
+  outline: 3px solid rgba(9, 0, 255, 0.18);
+  outline-offset: 2px;
+}
+
+.livros-search svg {
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-muted);
+}
+
+.livros-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--color-text);
+  background: transparent;
+  font: inherit;
+}
+
+.livros-count {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.livros-feedback,
+.livros-modal-feedback {
+  margin-bottom: 16px;
+}
+
+.livros-table-cover {
+  display: grid;
+  width: 42px;
+  height: 56px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #eef0ff;
+  color: var(--color-primary-dark);
+}
+
+.livros-table-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.livros-table-cover svg {
+  width: 22px;
+}
+
+.livros-title-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 180px;
+}
+
+.livros-title-cell span {
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.livros-disponibilidade {
+  display: inline-flex;
+  min-width: 42px;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.livros-disponibilidade.disponivel {
+  color: #126b35;
+  background: #d9f7e5;
+}
+
+.livros-disponibilidade.indisponivel {
+  color: #7b2525;
+  background: #fde1e1;
+}
+
+.livros-modal-backdrop {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(12, 20, 45, 0.48);
+}
+
+.livros-modal {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 18px;
+  padding: 24px;
+  background: var(--color-white);
+  box-shadow: 0 24px 70px rgba(12, 20, 45, 0.25);
+}
+
+.livros-modal-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.livros-modal-header h2 {
+  margin: 3px 0 0;
+}
+
+.livros-modal-close {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  color: var(--color-primary-dark);
+  background: var(--color-white);
+  cursor: pointer;
+}
+
+.livros-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.livros-isbn-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.livros-preview {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 20px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fafbff;
+}
+
+.livros-preview-cover {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #eceeff;
+  color: var(--color-primary-dark);
+}
+
+.livros-preview-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.livros-preview-cover svg {
+  width: 46px;
+  height: 46px;
+}
+
+.livros-preview-info h3 {
+  margin: 4px 0 6px;
+}
+
+.livros-preview-subtitle,
+.livros-preview-source {
+  color: var(--color-text-muted);
+}
+
+.livros-preview-source {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.livros-preview-info dl {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.livros-preview-info dl div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+}
+
+.livros-preview-info dt {
+  font-weight: 800;
+}
+
+.livros-preview-info dd {
+  margin: 0;
+}
+
+.livros-confirmacao {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.livros-confirmacao .ui-field {
+  max-width: 260px;
+}
+
+.livros-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+@media (max-width: 760px) {
+  .livros-header,
+  .livros-toolbar,
+  .livros-isbn-form {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .livros-header .ui-button,
+  .livros-search,
+  .livros-isbn-form .ui-button {
+    width: 100%;
+  }
+
+  .livros-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .livros-preview-cover {
+    width: 130px;
+    min-height: 180px;
+  }
+
+  .livros-preview-info dl div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .livros-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .livros-form-actions .ui-button {
+    width: 100%;
+  }
+}
