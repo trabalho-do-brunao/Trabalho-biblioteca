@@ -11,7 +11,7 @@ import './livros.css'
 
 export default function Livros() {
   const [livros, setLivros] = useState([])
-  const [busca, setBusca] = useState('')
+  const [busca, setBusca] = useState(() => new URLSearchParams(window.location.search).get('busca') || '')
   const [carregando, setCarregando] = useState(true)
   const [feedback, setFeedback] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
