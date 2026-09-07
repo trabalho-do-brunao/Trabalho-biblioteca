@@ -71,7 +71,7 @@ function ResumoCard({ icon: Icon, label, value, detail, tone = 'default' }) {
 }
 
 function ResultadoRenovacao({ mensagem }) {
-  if (!mensagem.renovacao_status) return null
+  if (!mensagem.tipo?.includes('renovacao') || !mensagem.renovacao_status) return null
 
   const aprovada = mensagem.renovacao_status === 'aprovada'
   return (
