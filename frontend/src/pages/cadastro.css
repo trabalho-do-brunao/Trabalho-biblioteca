@@ -1,276 +1,259 @@
 .cadastro-page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
-  align-items: center;
-  gap: clamp(30px, 5vw, 76px);
-  padding: clamp(26px, 4vw, 60px);
-  background: #ffffff;
-}
-
-.cadastro-visual {
-  min-height: min(78vh, 780px);
-  position: relative;
-  display: grid;
   place-items: center;
-  overflow: hidden;
-  border-radius: 34px;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(9, 0, 255, 0.1), transparent 31%),
-    linear-gradient(145deg, #fafaff 0%, #eef1ff 100%);
+  padding: clamp(28px, 5vw, 60px) 20px;
+  background: #1456f5;
 }
 
-.cadastro-visual::before,
-.cadastro-visual::after {
+.cadastro-shell {
+  width: min(100%, 940px);
+  display: grid;
+  justify-items: center;
+}
+
+.cadastro-title {
+  position: relative;
+  z-index: 5;
+  width: min(72%, 610px);
+  margin: 0 0 -18px;
+  padding: 15px 28px 13px;
+  border-radius: 18px;
+  color: #063b72;
+  background: #ffffff;
+  box-shadow: 0 7px 15px rgba(0, 29, 91, 0.18);
+  text-align: center;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.cadastro-book {
+  position: relative;
+  width: min(100%, 880px);
+  min-height: 540px;
+  padding: 48px 56px 42px;
+  filter: drop-shadow(0 15px 16px rgba(0, 29, 91, 0.2));
+}
+
+.cadastro-book::before,
+.cadastro-book::after {
   content: '';
   position: absolute;
-  border-radius: 999px;
-  background: rgba(9, 0, 255, 0.065);
+  top: 18px;
+  bottom: 8px;
+  width: calc(50% + 15px);
+  background: #fffef8;
+  border: 5px solid #ff6d6d;
+  box-shadow: inset 0 0 0 3px #ffd0c9;
+  z-index: 0;
 }
 
-.cadastro-visual::before {
-  width: 260px;
-  height: 260px;
-  top: -108px;
-  left: -74px;
+.cadastro-book::before {
+  left: 13px;
+  border-radius: 16px 3px 22px 18px;
+  clip-path: polygon(0 1%, 94% 5%, 100% 2%, 100% 98%, 92% 95%, 0 99%);
+  transform: perspective(850px) rotateY(2.5deg) rotateZ(0.6deg);
+  transform-origin: right center;
 }
 
-.cadastro-visual::after {
-  width: 360px;
-  height: 360px;
-  right: -145px;
-  bottom: -145px;
+.cadastro-book::after {
+  right: 13px;
+  border-radius: 3px 16px 18px 22px;
+  clip-path: polygon(0 2%, 6% 5%, 100% 1%, 100% 99%, 8% 95%, 0 98%);
+  transform: perspective(850px) rotateY(-2.5deg) rotateZ(-0.6deg);
+  transform-origin: left center;
 }
 
-.cadastro-library-scene {
-  position: relative;
+.cadastro-book-spine {
+  position: absolute;
   z-index: 1;
-  width: min(84%, 570px);
-  display: grid;
-  place-items: center;
-  gap: 19px;
-  color: var(--color-primary-dark);
+  top: 30px;
+  bottom: 16px;
+  left: 50%;
+  width: 26px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: linear-gradient(90deg, rgba(255, 105, 105, 0.28), rgba(255, 255, 255, 0.88) 48%, rgba(255, 105, 105, 0.28));
+  filter: blur(0.4px);
+  pointer-events: none;
 }
 
-.cadastro-library-icon {
-  width: clamp(175px, 20vw, 310px);
-  height: clamp(175px, 20vw, 310px);
-  stroke-width: 1.3;
-}
-
-.cadastro-library-books {
-  width: min(100%, 480px);
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  align-items: end;
-  gap: 8px;
-}
-
-.cadastro-library-books span {
-  display: block;
-  min-height: 84px;
-  border-radius: 8px 8px 3px 3px;
-  background: #0900ff;
-  box-shadow: inset 0 -12px 0 rgba(255, 255, 255, 0.16);
-}
-
-.cadastro-library-books span:nth-child(2n) {
-  min-height: 120px;
-  background: #52dbd4;
-}
-
-.cadastro-library-books span:nth-child(3n) {
-  min-height: 148px;
-  background: #e66cae;
-}
-
-.cadastro-library-books span:nth-child(5n) {
-  min-height: 106px;
-  background: #f0ba5c;
-}
-
-.cadastro-library-scene p {
-  margin: 0;
-  max-width: 480px;
-  text-align: center;
-  color: #6b6d78;
-  line-height: 1.55;
-}
-
-.cadastro-panel {
-  width: min(100%, 780px);
-  justify-self: center;
-  padding: clamp(30px, 3.5vw, 46px);
+.cadastro-panel.ui-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding: 30px 34px 20px;
   border: 0;
-  border-radius: 30px;
-  background: #b9c9f0;
-  box-shadow: 0 24px 58px rgba(5, 0, 151, 0.15);
-}
-
-.cadastro-heading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-bottom: 28px;
-  color: #0900ff;
-  text-align: left;
-}
-
-.cadastro-heading > svg {
-  width: 42px;
-  height: 42px;
-}
-
-.cadastro-heading h1 {
-  margin: 0;
-  font-size: clamp(1.9rem, 2.6vw, 2.65rem);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-}
-
-.cadastro-heading p {
-  margin: 5px 0 0;
-  color: #5e6070;
-  font-size: 0.93rem;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .cadastro-form {
   display: grid;
-  gap: 20px;
+  gap: 15px;
 }
 
 .cadastro-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 18px;
+  column-gap: 50px;
+  row-gap: 13px;
 }
 
-.cadastro-panel .ui-input {
-  min-height: 50px;
-  border: 0;
-  border-radius: 12px;
-  background: #93f2ef;
-  box-shadow: none;
+.cadastro-panel .ui-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
-.cadastro-panel .ui-input:focus {
-  outline: 3px solid rgba(9, 0, 255, 0.22);
+.cadastro-panel .ui-field-label-row {
+  min-height: auto;
 }
 
 .cadastro-panel .ui-field-label {
-  color: #101018;
-  font-weight: 700;
+  color: #063b72;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.cadastro-panel .ui-input {
+  width: 100%;
+  min-height: 41px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #ffffff;
+  background: #073b73;
+  box-shadow: none;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+.cadastro-panel .ui-input::placeholder {
+  color: rgba(255, 255, 255, 0.92);
+  opacity: 1;
+}
+
+.cadastro-panel .ui-input:focus {
+  outline: 3px solid rgba(20, 86, 245, 0.3);
+  outline-offset: 2px;
+}
+
+.cadastro-panel .ui-input.ui-input-error {
+  outline: 2px solid #cf2341;
+}
+
+.cadastro-panel .ui-field-error {
+  color: #af1732;
+  font-size: 0.68rem;
+  line-height: 1.15;
 }
 
 .cadastro-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 4px;
+  justify-content: center;
+  margin-top: 2px;
 }
 
-.cadastro-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 0;
-  padding: 8px 0;
-  color: #050097;
-  background: transparent;
-  font-weight: 700;
-}
-
-.cadastro-back:hover {
-  text-decoration: underline;
-}
-
-.cadastro-back svg {
-  width: 18px;
-  height: 18px;
-}
-
-.cadastro-submit {
-  min-width: 190px;
-  min-height: 50px;
-  border-radius: 12px;
-  background: #003d78;
-  text-transform: uppercase;
+.cadastro-submit.ui-button {
+  min-width: 150px;
+  min-height: 37px;
+  border-radius: 11px;
+  padding: 0 22px;
+  background: #063b72;
+  font-size: 0.75rem;
   font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
+.cadastro-submit.ui-button:hover:not(:disabled) {
+  background: #052f5a;
+}
+
+.cadastro-feedback {
+  max-width: 620px;
+  justify-self: center;
+  font-size: 0.76rem;
+}
+
+.cadastro-state,
 .cadastro-restrito {
+  min-height: 330px;
   display: grid;
-  gap: 18px;
+  place-content: center;
   justify-items: center;
+  gap: 18px;
+  text-align: center;
 }
 
-@media (max-width: 1080px) {
-  .cadastro-page {
-    grid-template-columns: 1fr;
-    padding: 28px;
-  }
-
-  .cadastro-visual {
-    min-height: 260px;
-  }
-
-  .cadastro-library-icon {
-    width: 160px;
-    height: 160px;
-  }
-
-  .cadastro-library-books {
-    width: min(76%, 350px);
-  }
-
-  .cadastro-library-books span {
-    min-height: 48px;
-  }
-
-  .cadastro-library-books span:nth-child(2n) {
-    min-height: 66px;
-  }
-
-  .cadastro-library-books span:nth-child(3n) {
-    min-height: 82px;
-  }
-
-  .cadastro-library-books span:nth-child(5n) {
-    min-height: 58px;
-  }
+.cadastro-restrito .ui-button {
+  background: #063b72;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 760px) {
   .cadastro-page {
-    padding: 16px;
+    padding: 28px 14px;
   }
 
-  .cadastro-visual {
+  .cadastro-title {
+    width: min(88%, 560px);
+    margin-bottom: -14px;
+    padding: 13px 18px 12px;
+  }
+
+  .cadastro-book {
+    width: min(100%, 640px);
+    min-height: auto;
+    padding: 38px 26px 30px;
+  }
+
+  .cadastro-book::before,
+  .cadastro-book::after,
+  .cadastro-book-spine {
     display: none;
   }
 
-  .cadastro-panel {
-    padding: 28px 20px;
-    border-radius: 22px;
+  .cadastro-book {
+    border: 4px solid #ff6d6d;
+    border-radius: 16px;
+    background: #fffef8;
+    box-shadow: inset 0 0 0 3px #ffd0c9, 0 12px 24px rgba(0, 29, 91, 0.18);
+    filter: none;
   }
 
-  .cadastro-heading {
-    align-items: flex-start;
-    justify-content: flex-start;
+  .cadastro-panel.ui-card {
+    padding: 22px 18px 14px;
+  }
+
+  .cadastro-grid {
+    column-gap: 22px;
+  }
+}
+
+@media (max-width: 580px) {
+  .cadastro-title {
+    width: 94%;
+    font-size: 1.35rem;
+  }
+
+  .cadastro-book {
+    padding: 32px 14px 22px;
+  }
+
+  .cadastro-panel.ui-card {
+    padding: 20px 10px 10px;
   }
 
   .cadastro-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .cadastro-actions {
-    align-items: stretch;
-    flex-direction: column-reverse;
-  }
-
-  .cadastro-submit {
-    width: 100%;
+  .cadastro-panel .ui-input {
+    min-height: 43px;
   }
 }
