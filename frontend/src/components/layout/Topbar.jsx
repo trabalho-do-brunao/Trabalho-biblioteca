@@ -1,8 +1,12 @@
 import { Bell, CircleUserRound, Menu } from 'lucide-react'
 
+import { useAuth } from '../../auth/AuthContext'
 import Tooltip from '../ui/Tooltip'
 
 export default function Topbar({ onToggleSidebar }) {
+  const { admin } = useAuth()
+  const perfil = admin ? `${admin.nome} — ${admin.email}` : 'Perfil administrativo'
+
   return (
     <header className="topbar">
       <Tooltip content="Abrir ou recolher o menu lateral" position="bottom">
@@ -22,8 +26,8 @@ export default function Topbar({ onToggleSidebar }) {
             <Bell />
           </button>
         </Tooltip>
-        <Tooltip content="Perfil e opções da conta" position="bottom">
-          <button type="button" className="topbar-icon-button" aria-label="Perfil">
+        <Tooltip content={perfil} position="bottom">
+          <button type="button" className="topbar-icon-button" aria-label={`Perfil: ${perfil}`}>
             <CircleUserRound />
           </button>
         </Tooltip>
