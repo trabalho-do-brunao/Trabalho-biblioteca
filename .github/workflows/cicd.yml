@@ -98,6 +98,9 @@ jobs:
       - name: Testar histórico do WhatsApp
         run: python scripts/test_whatsapp_historico.py
 
+      - name: Testar geração de relatórios
+        run: python scripts/test_relatorios_web.py
+
   construir:
     name: construir-imagem
     needs: testar
