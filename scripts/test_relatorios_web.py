@@ -47,7 +47,7 @@ def main() -> int:
         print("[OK] E-mail com PDF montado sem rede e sem expor senha SMTP")
 
         try:
-            gerar_relatorio_pdf(hoje.replace(day=min(28, hoje.day)), hoje.replace(day=1), Path(pasta) / "invalido.pdf")
+            gerar_relatorio_pdf(date(2026, 2, 2), date(2026, 2, 1), Path(pasta) / "invalido.pdf")
         except ValueError:
             print("[OK] Período inválido foi rejeitado")
         else:
