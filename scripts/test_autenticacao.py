@@ -1,4 +1,4 @@
-"""Teste seguro da autenticação administrativa sem credenciais reais."""
+"""Teste seguro da autenticação e do cadastro administrativo sem credenciais reais."""
 
 from __future__ import annotations
 
@@ -29,28 +29,63 @@ class PedidoFake:
         self.cookies = cookies
 
 
+def gerar_cpf_teste() -> str:
+    base = f"{int(uuid.uuid4().hex[:10], 16) % 1_000_000_000:09d}"
+    if len(set(base)) == 1:
+        base = "529982247"
+
+    def digito(parcial: str, peso_inicial: int) -> int:
+        soma = sum(int(numero) * (peso_inicial - indice) for indice, numero in enumerate(parcial))
+        resto = (soma * 10) % 11
+        return 0 if resto == 10 else resto
+
+    primeiro = digito(base, 10)
+    segundo = digito(base + str(primeiro), 11)
+    return base + str(primeiro) + str(segundo)
+
+
 def main() -> int:
     identificador = uuid.uuid4().hex[:12]
     email = f"auth-ci-{identificador}@example.test"
     senha = "SenhaTeste!123"
+    cpf = gerar_cpf_teste()
+    whatsapp = f"41{int(uuid.uuid4().hex[:8], 16) % 1_000_000_000:09d}"
     administrador_id = None
     token = None
 
     try:
-        administrador = criar_administrador("Administrador de Teste", email, senha)
+        administrador = criar_administrador(
+            "Administrador",
+            email,
+            senha,
+            sobrenome="de Teste",
+            cpf=cpf,
+            data_nascimento="01/01/2000",
+            whatsapp=whatsapp,
+        )
         administrador_id = int(administrador["id"])
-        print("[OK] Administrador temporário criado")
+        print("[OK] Administrador temporário criado com os campos da tela de cadastro")
 
         conexao = conectar()
         try:
             with conexao.cursor() as cursor:
                 cursor.execute(
-                    "SELECT senha_hash FROM administradores WHERE id = %s;",
+                    """
+                    SELECT senha_hash, sobrenome, cpf, data_nascimento, whatsapp
+                    FROM administradores
+                    WHERE id = %s;
+                    """,
                     (administrador_id,),
                 )
-                senha_hash = cursor.fetchone()[0]
+                senha_hash, sobrenome, cpf_salvo, nascimento, whatsapp_salvo = cursor.fetchone()
         finally:
             conexao.close()
+
+        assert sobrenome == "de Teste"
+        assert cpf_salvo == cpf
+        assert nascimento.isoformat() == "2000-01-01"
+        assert whatsapp_salvo == "55" + whatsapp
+        print("[OK] CPF, nascimento e WhatsApp foram normalizados e persistidos")
 
         assert senha_hash != senha, "A senha não pode ser armazenada em texto puro."
         assert senha not in senha_hash, "A senha não pode fazer parte do hash armazenado."
@@ -61,6 +96,7 @@ def main() -> int:
         autenticado = autenticar_administrador(email, senha)
         assert autenticado is not None
         assert autenticado["email"] == email
+        assert autenticado["sobrenome"] == "de Teste"
         print("[OK] Credencial incorreta é rejeitada e credencial correta é aceita")
 
         try:
@@ -104,7 +140,7 @@ def main() -> int:
         assert buscar_administrador_por_token(sessao.token) is None
         print("[OK] Logout invalida a sessão")
 
-        print("\n=== Teste de autenticação passou ===")
+        print("\n=== Teste de autenticação e cadastro passou ===")
         return 0
     finally:
         if token:
