@@ -115,6 +115,29 @@ jobs:
       - name: Testar autenticação administrativa
         run: python scripts/test_autenticacao.py
 
+      - name: Smoke test Docker Compose da AWS
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.aws.yml up -d --build db api
+
+          for tentativa in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+              echo "[OK] API respondeu ao health check pelo Docker Compose."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "[ERRO] API não respondeu ao health check do Docker Compose."
+          docker compose -f docker-compose.aws.yml ps || true
+          docker compose -f docker-compose.aws.yml logs api db --tail=120 || true
+          exit 1
+
+      - name: Encerrar smoke test Docker Compose
+        if: always()
+        run: docker compose -f docker-compose.aws.yml down -v --remove-orphans
+
   construir:
     name: construir-imagem
     needs: testar
@@ -148,9 +171,12 @@ jobs:
   publicar:
     name: publicar-docker-hub
     needs: [testar, construir]
+    # A publicação é opcional. Exige duas variáveis explícitas para não deixar
+    # o CI vermelho enquanto o Docker Hub não estiver configurado para o projeto.
     if: >-
       github.ref == 'refs/heads/repositorio-principal' &&
-      vars.PUBLISH_ENABLED == 'true'
+      vars.PUBLISH_ENABLED == 'true' &&
+      vars.DOCKERHUB_ENABLED == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -188,9 +214,12 @@ jobs:
   deploy:
     name: deploy-render
     needs: publicar
+    # O deploy antigo do Render permanece disponível apenas se for habilitado
+    # de forma explícita. A implantação principal está migrando para AWS/EC2.
     if: >-
       github.ref == 'refs/heads/repositorio-principal' &&
-      vars.DEPLOY_ENABLED == 'true'
+      vars.DEPLOY_ENABLED == 'true' &&
+      vars.RENDER_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
 
     steps:
