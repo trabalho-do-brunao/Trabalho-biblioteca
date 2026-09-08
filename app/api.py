@@ -16,6 +16,7 @@ from app.routes.dashboard import router as dashboard_router
 from app.routes.demo import router as demo_router
 from app.routes.emprestimos import router as emprestimos_router
 from app.routes.livros import router as livros_router
+from app.routes.relatorios import router as relatorios_router
 from app.routes.usuarios import router as usuarios_router
 from app.routes.whatsapp import router as whatsapp_router
 
@@ -96,6 +97,7 @@ app.include_router(livros_router)
 app.include_router(emprestimos_router)
 app.include_router(dashboard_router)
 app.include_router(whatsapp_router)
+app.include_router(relatorios_router)
 
 # Em desenvolvimento o Vite continua em :5173. Na imagem Docker o diretório
 # frontend_dist existe e o mesmo FastAPI passa a entregar a SPA compilada.
