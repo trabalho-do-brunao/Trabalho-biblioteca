@@ -19,6 +19,13 @@ from app.repositories.emprestimos import (
     registrar_devolucao,
     registrar_emprestimo,
 )
+from app.services.lembrete_renovacao import (
+    EmprestimoLembreteNaoEncontradoError,
+    EmprestimoNaoElegivelLembreteError,
+    EnvioLembreteRenovacaoError,
+    LembreteRenovacaoError,
+    enviar_lembrete_renovacao_manual,
+)
 
 
 router = APIRouter(prefix="/api/emprestimos", tags=["emprestimos"])
@@ -54,11 +61,28 @@ def _situacao_atual(emprestimos: list[dict[str, object]]) -> list[dict[str, obje
 
 
 def _erro_operacao(erro: Exception) -> HTTPException:
-    if isinstance(erro, (UsuarioNaoEncontradoError, LivroNaoEncontradoError, EmprestimoNaoEncontradoError)):
+    if isinstance(
+        erro,
+        (
+            UsuarioNaoEncontradoError,
+            LivroNaoEncontradoError,
+            EmprestimoNaoEncontradoError,
+            EmprestimoLembreteNaoEncontradoError,
+        ),
+    ):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(erro))
-    if isinstance(erro, (LivroIndisponivelError, EmprestimoJaDevolvidoError)):
+    if isinstance(
+        erro,
+        (
+            LivroIndisponivelError,
+            EmprestimoJaDevolvidoError,
+            EmprestimoNaoElegivelLembreteError,
+        ),
+    ):
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(erro))
-    if isinstance(erro, (EmprestimoError, ValueError)):
+    if isinstance(erro, EnvioLembreteRenovacaoError):
+        return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(erro))
+    if isinstance(erro, (EmprestimoError, LembreteRenovacaoError, ValueError)):
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(erro))
     if isinstance(erro, ConnectionError):
         return HTTPException(
@@ -112,5 +136,14 @@ def devolver(emprestimo_id: int, dados: DevolucaoEntrada) -> dict[str, object]:
     try:
         emprestimo = registrar_devolucao(emprestimo_id, dados.data_devolucao)
         return {"emprestimo": emprestimo, "mensagem": "Devolução registrada com sucesso."}
+    except Exception as erro:
+        raise _erro_operacao(erro) from erro
+
+
+@router.post("/{emprestimo_id}/lembrete-renovacao")
+def enviar_lembrete_renovacao(emprestimo_id: int) -> dict[str, object]:
+    """Envia um convite manual de renovação sem alterar os avisos automáticos."""
+    try:
+        return enviar_lembrete_renovacao_manual(emprestimo_id)
     except Exception as erro:
         raise _erro_operacao(erro) from erro
