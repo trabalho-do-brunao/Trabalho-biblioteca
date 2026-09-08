@@ -8,11 +8,12 @@ import os
 import re
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.repositories.autenticacao import (
     buscar_administrador_por_email,
     buscar_administrador_por_sessao,
+    contar_administradores,
     criar_administrador as criar_administrador_repo,
     criar_sessao as criar_sessao_repo,
     encerrar_sessao as encerrar_sessao_repo,
@@ -48,6 +49,15 @@ def validar_nome(nome: str) -> str:
     return valor
 
 
+def validar_sobrenome(sobrenome: str) -> str:
+    valor = " ".join(str(sobrenome or "").split())
+    if len(valor) < 2:
+        raise ValueError("Informe o sobrenome.")
+    if len(valor) > 100:
+        raise ValueError("O sobrenome deve ter no máximo 100 caracteres.")
+    return valor
+
+
 def validar_senha_nova(senha: str) -> str:
     valor = str(senha or "")
     if len(valor) < 8:
@@ -55,6 +65,58 @@ def validar_senha_nova(senha: str) -> str:
     if len(valor) > 128:
         raise ValueError("A senha deve ter no máximo 128 caracteres.")
     return valor
+
+
+def validar_cpf(cpf: str) -> str:
+    digitos = re.sub(r"\D", "", str(cpf or ""))
+    if len(digitos) != 11 or len(set(digitos)) == 1:
+        raise ValueError("Informe um CPF válido.")
+
+    def calcular(base: str, peso_inicial: int) -> int:
+        soma = sum(int(numero) * (peso_inicial - indice) for indice, numero in enumerate(base))
+        resto = (soma * 10) % 11
+        return 0 if resto == 10 else resto
+
+    primeiro = calcular(digitos[:9], 10)
+    segundo = calcular(digitos[:10], 11)
+    if primeiro != int(digitos[9]) or segundo != int(digitos[10]):
+        raise ValueError("Informe um CPF válido.")
+    return digitos
+
+
+def validar_data_nascimento(valor: str | date) -> date:
+    if isinstance(valor, date):
+        resultado = valor
+    else:
+        texto = str(valor or "").strip()
+        resultado = None
+        for formato in ("%d/%m/%Y", "%Y-%m-%d"):
+            try:
+                resultado = datetime.strptime(texto, formato).date()
+                break
+            except ValueError:
+                continue
+        if resultado is None:
+            raise ValueError("Informe uma data de nascimento válida.")
+
+    hoje = date.today()
+    if resultado > hoje:
+        raise ValueError("A data de nascimento não pode estar no futuro.")
+    if resultado.year < 1900:
+        raise ValueError("Informe uma data de nascimento válida.")
+    return resultado
+
+
+def normalizar_whatsapp(valor: str) -> str:
+    texto = str(valor or "").strip()
+    digitos = re.sub(r"\D", "", texto)
+    if digitos.startswith("00"):
+        digitos = digitos[2:]
+    if len(digitos) in {10, 11}:
+        digitos = "55" + digitos
+    if len(digitos) < 12 or len(digitos) > 15:
+        raise ValueError("Informe um WhatsApp válido com DDD.")
+    return digitos
 
 
 def gerar_hash_senha(senha: str) -> str:
@@ -66,10 +128,7 @@ def gerar_hash_senha(senha: str) -> str:
         salt,
         ITERACOES_PBKDF2,
     )
-    return (
-        f"{ALGORITMO_SENHA}${ITERACOES_PBKDF2}$"
-        f"{salt.hex()}${digest.hex()}"
-    )
+    return f"{ALGORITMO_SENHA}${ITERACOES_PBKDF2}${salt.hex()}${digest.hex()}"
 
 
 def verificar_senha(senha: str, hash_armazenado: str) -> bool:
@@ -95,11 +154,39 @@ def verificar_senha(senha: str, hash_armazenado: str) -> bool:
         return False
 
 
-def criar_administrador(nome: str, email: str, senha: str) -> dict[str, object]:
+def cadastro_publico_disponivel() -> bool:
+    """Permite cadastro sem sessão somente enquanto não existir nenhum administrador."""
+    return contar_administradores() == 0
+
+
+def criar_administrador(
+    nome: str,
+    email: str,
+    senha: str,
+    *,
+    sobrenome: str | None = None,
+    cpf: str | None = None,
+    data_nascimento: str | date | None = None,
+    whatsapp: str | None = None,
+) -> dict[str, object]:
     nome_validado = validar_nome(nome)
     email_validado = normalizar_email(email)
     hash_senha = gerar_hash_senha(senha)
-    return criar_administrador_repo(nome_validado, email_validado, hash_senha)
+
+    sobrenome_validado = validar_sobrenome(sobrenome) if sobrenome is not None else None
+    cpf_validado = validar_cpf(cpf) if cpf is not None else None
+    data_validada = validar_data_nascimento(data_nascimento) if data_nascimento is not None else None
+    whatsapp_validado = normalizar_whatsapp(whatsapp) if whatsapp is not None else None
+
+    return criar_administrador_repo(
+        nome_validado,
+        email_validado,
+        hash_senha,
+        sobrenome=sobrenome_validado,
+        cpf=cpf_validado,
+        data_nascimento=data_validada,
+        whatsapp=whatsapp_validado,
+    )
 
 
 def autenticar_administrador(email: str, senha: str) -> dict[str, object] | None:
@@ -118,6 +205,7 @@ def autenticar_administrador(email: str, senha: str) -> dict[str, object] | None
     return {
         "id": administrador["id"],
         "nome": administrador["nome"],
+        "sobrenome": administrador.get("sobrenome"),
         "email": administrador["email"],
     }
 
@@ -142,6 +230,7 @@ def criar_sessao(administrador: dict[str, object]) -> SessaoCriada:
         administrador={
             "id": administrador["id"],
             "nome": administrador["nome"],
+            "sobrenome": administrador.get("sobrenome"),
             "email": administrador["email"],
         },
     )
@@ -158,6 +247,7 @@ def buscar_administrador_por_token(token: str | None) -> dict[str, object] | Non
     return {
         "id": administrador["id"],
         "nome": administrador["nome"],
+        "sobrenome": administrador.get("sobrenome"),
         "email": administrador["email"],
         "expira_em": administrador["expira_em"],
     }
