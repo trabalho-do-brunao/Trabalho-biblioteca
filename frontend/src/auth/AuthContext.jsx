@@ -29,6 +29,16 @@ export function AuthProvider({ children }) {
     atualizarSessao()
   }, [atualizarSessao])
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setAdmin(null)
+      setLoading(false)
+    }
+
+    window.addEventListener('biblioavisa:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('biblioavisa:unauthorized', handleUnauthorized)
+  }, [])
+
   const entrar = useCallback(async (email, senha) => {
     const resposta = await loginAdministrador(email, senha)
     setAdmin(resposta.admin)
@@ -37,12 +47,9 @@ export function AuthProvider({ children }) {
   }, [])
 
   const sair = useCallback(async () => {
-    try {
-      await logoutAdministrador()
-    } finally {
-      setAdmin(null)
-      setLoading(false)
-    }
+    await logoutAdministrador()
+    setAdmin(null)
+    setLoading(false)
   }, [])
 
   const valor = useMemo(
