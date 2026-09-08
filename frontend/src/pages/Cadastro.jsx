@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, LibraryBig, UserPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/AuthContext'
@@ -158,157 +157,133 @@ export default function Cadastro() {
 
   return (
     <main className="cadastro-page">
-      <section className="cadastro-visual" aria-label="Ilustração da biblioteca">
-        <div className="cadastro-library-scene">
-          <LibraryBig className="cadastro-library-icon" aria-hidden="true" />
-          <div className="cadastro-library-books" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <p>
-            Crie uma conta de acesso para administrar o acervo e acompanhar os empréstimos.
-          </p>
+      <section className="cadastro-shell" aria-labelledby="cadastro-title">
+        <h1 id="cadastro-title" className="cadastro-title">REALIZE SEU CADASTRO</h1>
+
+        <div className="cadastro-book">
+          <div className="cadastro-book-spine" aria-hidden="true" />
+
+          <Card className="cadastro-panel" as="section">
+            {loading ? (
+              <div className="cadastro-state">
+                <Feedback type="info">Verificando disponibilidade do cadastro...</Feedback>
+              </div>
+            ) : !podeCadastrar ? (
+              <div className="cadastro-restrito">
+                <Feedback type="info">
+                  Já existe uma conta administrativa. Novos cadastros precisam ser feitos por um administrador autenticado.
+                </Feedback>
+                <Button variant="dark" type="button" onClick={() => navigate('/login')}>
+                  Voltar para o login
+                </Button>
+              </div>
+            ) : (
+              <form className="cadastro-form" onSubmit={handleSubmit} noValidate>
+                <div className="cadastro-grid">
+                  <TextField
+                    id="cadastro-nome"
+                    label="Nome:"
+                    placeholder="Digite seu nome"
+                    autoComplete="given-name"
+                    value={form.nome}
+                    onChange={atualizarCampo('nome')}
+                    error={errors.nome}
+                    tooltip="Informe somente seu primeiro nome ou nome principal."
+                  />
+
+                  <TextField
+                    id="cadastro-sobrenome"
+                    label="Sobrenome:"
+                    placeholder="Digite seu sobrenome"
+                    autoComplete="family-name"
+                    value={form.sobrenome}
+                    onChange={atualizarCampo('sobrenome')}
+                    error={errors.sobrenome}
+                  />
+
+                  <TextField
+                    id="cadastro-cpf"
+                    label="CPF:"
+                    placeholder="Digite seu CPF"
+                    inputMode="numeric"
+                    mask="cpf"
+                    value={form.cpf}
+                    onChange={atualizarCampo('cpf')}
+                    error={errors.cpf}
+                    tooltip="O CPF é validado antes do cadastro e não pode ser repetido."
+                  />
+
+                  <TextField
+                    id="cadastro-whatsapp"
+                    label="WhatsApp:"
+                    placeholder="Digite seu WhatsApp"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    mask="telefoneBr"
+                    value={form.whatsapp}
+                    onChange={atualizarCampo('whatsapp')}
+                    error={errors.whatsapp}
+                    tooltip="Informe DDD e número. O sistema armazena o telefone normalizado."
+                  />
+
+                  <TextField
+                    id="cadastro-data"
+                    label="Data de nascimento:"
+                    placeholder="Digite sua data de nascimento"
+                    inputMode="numeric"
+                    mask="dataBr"
+                    value={form.dataNascimento}
+                    onChange={atualizarCampo('dataNascimento')}
+                    error={errors.dataNascimento}
+                  />
+
+                  <TextField
+                    id="cadastro-email"
+                    label="E-mail:"
+                    type="email"
+                    placeholder="Digite seu e-mail"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={atualizarCampo('email')}
+                    error={errors.email}
+                  />
+
+                  <TextField
+                    id="cadastro-senha"
+                    label="Crie uma senha:"
+                    type="password"
+                    placeholder="Digite uma senha"
+                    autoComplete="new-password"
+                    value={form.senha}
+                    onChange={atualizarCampo('senha')}
+                    error={errors.senha}
+                    tooltip="A senha é armazenada somente como hash seguro no banco."
+                  />
+
+                  <TextField
+                    id="cadastro-confirmar-senha"
+                    label="Confirme sua senha:"
+                    type="password"
+                    placeholder="Digite novamente sua senha"
+                    autoComplete="new-password"
+                    value={form.confirmarSenha}
+                    onChange={atualizarCampo('confirmarSenha')}
+                    error={errors.confirmarSenha}
+                  />
+                </div>
+
+                {feedback ? <Feedback className="cadastro-feedback" type={feedbackType}>{feedback}</Feedback> : null}
+
+                <div className="cadastro-actions">
+                  <Button className="cadastro-submit" variant="dark" type="submit" disabled={submitting}>
+                    {submitting ? 'Criando...' : 'Criar conta'}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </Card>
         </div>
       </section>
-
-      <Card className="cadastro-panel" as="section">
-        <div className="cadastro-heading">
-          <UserPlus aria-hidden="true" />
-          <div>
-            <h1>CRIE SUA CONTA</h1>
-            <p>{authenticated ? 'Cadastre outro administrador do sistema.' : 'Preencha seus dados para criar o primeiro acesso.'}</p>
-          </div>
-        </div>
-
-        {loading ? (
-          <Feedback type="info">Verificando disponibilidade do cadastro...</Feedback>
-        ) : !podeCadastrar ? (
-          <div className="cadastro-restrito">
-            <Feedback type="info">
-              Já existe uma conta administrativa. Novos cadastros precisam ser feitos por um administrador autenticado.
-            </Feedback>
-            <Button variant="dark" type="button" onClick={() => navigate('/login')}>
-              Voltar para o login
-            </Button>
-          </div>
-        ) : (
-          <form className="cadastro-form" onSubmit={handleSubmit} noValidate>
-            <div className="cadastro-grid">
-              <TextField
-                id="cadastro-nome"
-                label="Nome:"
-                placeholder="Digite seu nome"
-                autoComplete="given-name"
-                value={form.nome}
-                onChange={atualizarCampo('nome')}
-                error={errors.nome}
-                tooltip="Informe somente seu primeiro nome ou nome principal."
-              />
-
-              <TextField
-                id="cadastro-sobrenome"
-                label="Sobrenome:"
-                placeholder="Digite seu sobrenome"
-                autoComplete="family-name"
-                value={form.sobrenome}
-                onChange={atualizarCampo('sobrenome')}
-                error={errors.sobrenome}
-              />
-
-              <TextField
-                id="cadastro-cpf"
-                label="CPF:"
-                placeholder="000.000.000-00"
-                inputMode="numeric"
-                mask="cpf"
-                value={form.cpf}
-                onChange={atualizarCampo('cpf')}
-                error={errors.cpf}
-                tooltip="O CPF é validado antes do cadastro e não pode ser repetido."
-              />
-
-              <TextField
-                id="cadastro-data"
-                label="Data de nascimento:"
-                placeholder="DD/MM/AAAA"
-                inputMode="numeric"
-                mask="dataBr"
-                value={form.dataNascimento}
-                onChange={atualizarCampo('dataNascimento')}
-                error={errors.dataNascimento}
-              />
-
-              <TextField
-                id="cadastro-whatsapp"
-                label="WhatsApp:"
-                placeholder="(00) 00000-0000"
-                inputMode="tel"
-                autoComplete="tel"
-                mask="telefoneBr"
-                value={form.whatsapp}
-                onChange={atualizarCampo('whatsapp')}
-                error={errors.whatsapp}
-                tooltip="Informe DDD e número. O sistema armazena o telefone normalizado."
-              />
-
-              <TextField
-                id="cadastro-email"
-                label="E-mail:"
-                type="email"
-                placeholder="nome@dominio.com"
-                autoComplete="email"
-                value={form.email}
-                onChange={atualizarCampo('email')}
-                error={errors.email}
-              />
-
-              <TextField
-                id="cadastro-senha"
-                label="Senha:"
-                type="password"
-                placeholder="Mínimo de 8 caracteres"
-                autoComplete="new-password"
-                value={form.senha}
-                onChange={atualizarCampo('senha')}
-                error={errors.senha}
-                tooltip="A senha é armazenada somente como hash seguro no banco."
-              />
-
-              <TextField
-                id="cadastro-confirmar-senha"
-                label="Confirmar senha:"
-                type="password"
-                placeholder="Digite a senha novamente"
-                autoComplete="new-password"
-                value={form.confirmarSenha}
-                onChange={atualizarCampo('confirmarSenha')}
-                error={errors.confirmarSenha}
-              />
-            </div>
-
-            {feedback ? <Feedback type={feedbackType}>{feedback}</Feedback> : null}
-
-            <div className="cadastro-actions">
-              <button
-                type="button"
-                className="cadastro-back"
-                onClick={() => navigate(authenticated ? '/configuracoes' : '/login')}
-              >
-                <ArrowLeft aria-hidden="true" />
-                {authenticated ? 'Voltar às configurações' : 'Já tenho uma conta'}
-              </button>
-
-              <Button className="cadastro-submit" variant="dark" type="submit" disabled={submitting}>
-                {submitting ? 'Cadastrando...' : 'Cadastrar'}
-              </Button>
-            </div>
-          </form>
-        )}
-      </Card>
     </main>
   )
 }
