@@ -47,11 +47,21 @@ def _env_bool(nome: str, padrao: str = "false") -> bool:
 
 
 def _carregar_env() -> None:
-    if not ENV_PATH.exists():
-        raise RuntimeError(
-            "Arquivo .env não encontrado. Execute setup.bat antes de iniciar a automação."
-        )
-    load_dotenv(ENV_PATH, override=True)
+    """Carrega .env local quando existe ou aceita ambiente injetado por Docker/serviço."""
+    if ENV_PATH.exists():
+        # Variáveis já fornecidas pelo processo (por exemplo Docker Compose) têm prioridade.
+        load_dotenv(ENV_PATH, override=False)
+        return
+
+    # Em produção/containers os segredos e configurações podem ser injetados sem
+    # materializar um arquivo .env dentro da imagem.
+    if os.getenv("DB_NAME") and os.getenv("DB_USER") and os.getenv("DB_PASSWORD"):
+        return
+
+    raise RuntimeError(
+        "Configuração não encontrada. Execute setup.bat no Windows, setup_linux.sh "
+        "no Linux ou forneça as variáveis de ambiente do BiblioAvisa."
+    )
 
 
 def _normalizar_data(valor: date | str | None) -> date:
@@ -68,7 +78,7 @@ def _normalizar_data(valor: date | str | None) -> date:
 
 
 def carregar_configuracao_agendamento() -> ConfiguracaoAgendamento:
-    """Carrega e valida as opções da automação diária definidas no `.env`."""
+    """Carrega e valida as opções da automação diária definidas no ambiente."""
     _carregar_env()
 
     hora_texto = (os.getenv("AUTOMACAO_HORA") or "08:00").strip()
@@ -294,7 +304,7 @@ def criar_agendador(
 def iniciar_agendador() -> int:
     config = carregar_configuracao_agendamento()
     if not config.ativo:
-        print("[AUTOMAÇÃO] Agendamento diário DESATIVADO no .env (AUTOMACAO_ENABLED=false).")
+        print("[AUTOMAÇÃO] Agendamento diário DESATIVADO no ambiente (AUTOMACAO_ENABLED=false).")
         return 0
 
     scheduler = criar_agendador(config)
@@ -333,7 +343,7 @@ def main() -> int:
     modo.add_argument(
         "--agendar",
         action="store_true",
-        help="Mantém o processo aberto e executa diariamente no horário do .env.",
+        help="Mantém o processo aberto e executa diariamente no horário configurado.",
     )
     parser.add_argument(
         "--data",

@@ -1,14 +1,13 @@
 """Inicializa e atualiza o banco PostgreSQL do BiblioAvisa.
 
 Fluxo:
-1. Carrega as configurações do arquivo .env.
+1. Carrega as configurações do .env local ou das variáveis de ambiente.
 2. Cria o banco definido em DB_NAME caso ele ainda não exista.
 3. Executa database/db.sql quando o banco ainda não possui as tabelas-base.
 4. Aplica, em ordem, as migrações idempotentes de database/migrations.
-5. Executa database/seed.sql para inserir os dados de demonstração.
-6. Valida se as tabelas obrigatórias foram criadas.
+5. Valida se as tabelas obrigatórias foram criadas.
 
-O script não apaga tabelas ou dados existentes.
+O script não insere dados de demonstração e não apaga tabelas ou dados existentes.
 """
 
 from __future__ import annotations
@@ -25,7 +24,6 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = PROJECT_ROOT / "database" / "db.sql"
-SEED_PATH = PROJECT_ROOT / "database" / "seed.sql"
 MIGRATIONS_DIR = PROJECT_ROOT / "database" / "migrations"
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -47,13 +45,14 @@ REQUIRED_TABLES = CORE_TABLES | AUTH_TABLES
 
 def carregar_configuracao() -> dict[str, str]:
     """Carrega e valida as variáveis necessárias para acessar o PostgreSQL."""
-    if not ENV_PATH.exists():
+    if ENV_PATH.exists():
+        # Variáveis já injetadas pelo processo (Docker/systemd) têm prioridade.
+        load_dotenv(ENV_PATH, override=False)
+    elif not (os.getenv("DB_NAME") and os.getenv("DB_USER") and os.getenv("DB_PASSWORD")):
         raise RuntimeError(
-            "Arquivo .env não encontrado. Copie .env.example para .env e "
-            "preencha os dados do seu PostgreSQL local."
+            "Configuração do PostgreSQL não encontrada. Use .env local ou forneça "
+            "DB_NAME, DB_USER e DB_PASSWORD como variáveis de ambiente."
         )
-
-    load_dotenv(ENV_PATH)
 
     config = {
         "host": os.getenv("DB_HOST", "localhost"),
@@ -76,7 +75,7 @@ def carregar_configuracao() -> dict[str, str]:
     ]
 
     if faltando:
-        raise RuntimeError("Preencha no arquivo .env: " + ", ".join(faltando))
+        raise RuntimeError("Preencha a configuração: " + ", ".join(faltando))
 
     return config
 
@@ -126,7 +125,7 @@ def garantir_banco(config: dict[str, str]) -> None:
         raise RuntimeError(
             "Não foi possível criar o banco. O usuário configurado em DB_USER "
             "precisa ter permissão para criar bancos, ou o banco deve ser criado "
-            "manualmente uma única vez no pgAdmin."
+            "manualmente uma única vez."
         ) from erro
     finally:
         conexao.close()
@@ -230,7 +229,6 @@ def main() -> int:
 
         preparar_estrutura(conexao)
         aplicar_migracoes(conexao)
-        executar_arquivo_sql(conexao, SEED_PATH, "dados de demonstração")
         validar_banco(conexao)
 
         print("\n=== Inicialização concluída com sucesso ===")

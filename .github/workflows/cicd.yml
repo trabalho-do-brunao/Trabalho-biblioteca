@@ -67,6 +67,9 @@ jobs:
       - name: Validar sintaxe Python
         run: python -m compileall -q app scripts
 
+      - name: Validar scripts Linux/AWS
+        run: bash -n setup_linux.sh run_linux.sh
+
       - name: Testar detecção de portas do inicializador
         run: python scripts/test_iniciar_servicos.py
 
@@ -76,6 +79,7 @@ jobs:
           cat > .env <<'EOF'
           APP_ENV=test
           AUTH_SESSION_HOURS=8
+          AUTH_COOKIE_SECURE=false
           DB_HOST=127.0.0.1
           DB_PORT=5432
           DB_NAME=ecf_ci
@@ -84,7 +88,10 @@ jobs:
           DB_MAINTENANCE_NAME=postgres
           EOF
 
-      - name: Inicializar PostgreSQL de CI
+      - name: Validar Docker Compose da AWS
+        run: docker compose -f docker-compose.aws.yml config -q
+
+      - name: Inicializar PostgreSQL de CI sem seed
         run: python scripts/init_db.py
 
       - name: Testar integração Python com PostgreSQL
@@ -120,12 +127,21 @@ jobs:
       - name: Preparar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Validar build da imagem Docker
+      - name: Validar build da imagem principal
         uses: docker/build-push-action@v6
         with:
           context: .
           push: false
           tags: biblioavisa:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Validar build da imagem Baileys
+        uses: docker/build-push-action@v6
+        with:
+          context: ./whatsapp_service
+          push: false
+          tags: biblioavisa-baileys:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
