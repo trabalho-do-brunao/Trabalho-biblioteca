@@ -93,6 +93,7 @@ async function requisicao(caminho, opcoes = {}) {
   try {
     const resposta = await fetch(`${API_URL}${caminho}`, {
       ...opcoes,
+      credentials: 'include',
       signal: controller.signal,
       headers,
     })
@@ -127,6 +128,21 @@ async function requisicao(caminho, opcoes = {}) {
 
 export function verificarSaudeApi() {
   return requisicao('/api/health')
+}
+
+export function loginAdministrador(email, senha) {
+  return requisicao('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, senha }),
+  })
+}
+
+export function consultarSessaoAdministrador() {
+  return requisicao('/api/auth/session')
+}
+
+export function logoutAdministrador() {
+  return requisicao('/api/auth/logout', { method: 'POST' })
 }
 
 export function demonstrarIntegracao(dados) {
