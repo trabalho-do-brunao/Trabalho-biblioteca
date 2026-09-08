@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BookCheck, History, Plus, RotateCcw, Search } from 'lucide-react'
+import { BookCheck, History, MessageCircleMore, Plus, RotateCcw, Search } from 'lucide-react'
 
 import EmprestimoFormModal from '../components/emprestimos/EmprestimoFormModal'
 import Button from '../components/ui/Button'
@@ -7,6 +7,7 @@ import DataTable from '../components/ui/DataTable'
 import Feedback from '../components/ui/Feedback'
 import { mensagemErroApi } from '../services/api'
 import {
+  enviarLembreteRenovacao,
   listarEmprestimosAtivos,
   listarHistoricoEmprestimos,
   registrarDevolucao,
@@ -40,6 +41,7 @@ export default function Emprestimos() {
   const [modalAberto, setModalAberto] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [devolvendo, setDevolvendo] = useState(null)
+  const [enviandoRenovacao, setEnviandoRenovacao] = useState(null)
 
   const carregar = async () => {
     setCarregando(true)
@@ -113,6 +115,19 @@ export default function Emprestimos() {
     }
   }
 
+  const enviarRenovacao = async (emprestimo) => {
+    setEnviandoRenovacao(emprestimo.id)
+    setFeedback(null)
+    try {
+      const resposta = await enviarLembreteRenovacao(emprestimo.id)
+      setFeedback({ type: 'success', message: resposta.mensagem })
+    } catch (erro) {
+      setFeedback({ type: 'error', message: mensagemErroApi(erro) })
+    } finally {
+      setEnviandoRenovacao(null)
+    }
+  }
+
   const columns = [
     { key: 'id', label: 'ID' },
     { key: 'usuario_nome', label: 'Usuário' },
@@ -154,17 +169,33 @@ export default function Emprestimos() {
       key: 'acoes',
       label: 'Ações',
       render: (item) => (
-        <Button
-          type="button"
-          variant="ghost"
-          className="emprestimos-return-button"
-          onClick={() => devolver(item)}
-          disabled={devolvendo === item.id}
-          title={`Registrar devolução de ${item.livro_titulo}`}
-        >
-          <RotateCcw aria-hidden="true" />
-          {devolvendo === item.id ? 'Devolvendo...' : 'Devolver'}
-        </Button>
+        <div className="emprestimos-row-actions">
+          <Button
+            type="button"
+            variant="ghost"
+            className="emprestimos-renew-message-button"
+            onClick={() => enviarRenovacao(item)}
+            disabled={item.status === 'atrasado' || enviandoRenovacao === item.id}
+            title={item.status === 'atrasado'
+              ? 'Empréstimos atrasados não podem ser renovados pelo WhatsApp'
+              : `Enviar mensagem de renovação para ${item.usuario_nome}`}
+          >
+            <MessageCircleMore aria-hidden="true" />
+            {enviandoRenovacao === item.id ? 'Enviando...' : 'Renovação'}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="emprestimos-return-button"
+            onClick={() => devolver(item)}
+            disabled={devolvendo === item.id}
+            title={`Registrar devolução de ${item.livro_titulo}`}
+          >
+            <RotateCcw aria-hidden="true" />
+            {devolvendo === item.id ? 'Devolvendo...' : 'Devolver'}
+          </Button>
+        </div>
       ),
     }] : []),
   ]
