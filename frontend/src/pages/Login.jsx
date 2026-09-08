@@ -15,8 +15,8 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const { authenticated, entrar, loading } = useAuth()
-  const [feedback, setFeedback] = useState('')
-  const [feedbackType, setFeedbackType] = useState('info')
+  const [feedback, setFeedback] = useState(location.state?.message || '')
+  const [feedbackType, setFeedbackType] = useState(location.state?.message ? 'success' : 'info')
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ email: '', senha: '' })
   const [errors, setErrors] = useState({})
@@ -144,7 +144,7 @@ export default function Login() {
           <button
             className="login-create-account"
             type="button"
-            onClick={() => showFutureFeature('Contas administrativas são criadas pelo responsável do sistema.')}
+            onClick={() => navigate('/cadastro')}
           >
             Ou crie sua conta
           </button>
