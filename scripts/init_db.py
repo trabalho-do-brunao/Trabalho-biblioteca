@@ -5,10 +5,9 @@ Fluxo:
 2. Cria o banco definido em DB_NAME caso ele ainda não exista.
 3. Executa database/db.sql quando o banco ainda não possui as tabelas-base.
 4. Aplica, em ordem, as migrações idempotentes de database/migrations.
-5. Executa database/seed.sql para inserir os dados de demonstração.
-6. Valida se as tabelas obrigatórias foram criadas.
+5. Valida se as tabelas obrigatórias foram criadas.
 
-O script não apaga tabelas ou dados existentes.
+O script não insere dados de demonstração e não apaga tabelas ou dados existentes.
 """
 
 from __future__ import annotations
@@ -25,7 +24,6 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = PROJECT_ROOT / "database" / "db.sql"
-SEED_PATH = PROJECT_ROOT / "database" / "seed.sql"
 MIGRATIONS_DIR = PROJECT_ROOT / "database" / "migrations"
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -126,7 +124,7 @@ def garantir_banco(config: dict[str, str]) -> None:
         raise RuntimeError(
             "Não foi possível criar o banco. O usuário configurado em DB_USER "
             "precisa ter permissão para criar bancos, ou o banco deve ser criado "
-            "manualmente uma única vez no pgAdmin."
+            "manualmente uma única vez."
         ) from erro
     finally:
         conexao.close()
@@ -230,7 +228,6 @@ def main() -> int:
 
         preparar_estrutura(conexao)
         aplicar_migracoes(conexao)
-        executar_arquivo_sql(conexao, SEED_PATH, "dados de demonstração")
         validar_banco(conexao)
 
         print("\n=== Inicialização concluída com sucesso ===")
