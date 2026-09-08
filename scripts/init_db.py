@@ -1,7 +1,7 @@
 """Inicializa e atualiza o banco PostgreSQL do BiblioAvisa.
 
 Fluxo:
-1. Carrega as configurações do arquivo .env.
+1. Carrega as configurações do .env local ou das variáveis de ambiente.
 2. Cria o banco definido em DB_NAME caso ele ainda não exista.
 3. Executa database/db.sql quando o banco ainda não possui as tabelas-base.
 4. Aplica, em ordem, as migrações idempotentes de database/migrations.
@@ -45,13 +45,14 @@ REQUIRED_TABLES = CORE_TABLES | AUTH_TABLES
 
 def carregar_configuracao() -> dict[str, str]:
     """Carrega e valida as variáveis necessárias para acessar o PostgreSQL."""
-    if not ENV_PATH.exists():
+    if ENV_PATH.exists():
+        # Variáveis já injetadas pelo processo (Docker/systemd) têm prioridade.
+        load_dotenv(ENV_PATH, override=False)
+    elif not (os.getenv("DB_NAME") and os.getenv("DB_USER") and os.getenv("DB_PASSWORD")):
         raise RuntimeError(
-            "Arquivo .env não encontrado. Copie .env.example para .env e "
-            "preencha os dados do seu PostgreSQL local."
+            "Configuração do PostgreSQL não encontrada. Use .env local ou forneça "
+            "DB_NAME, DB_USER e DB_PASSWORD como variáveis de ambiente."
         )
-
-    load_dotenv(ENV_PATH)
 
     config = {
         "host": os.getenv("DB_HOST", "localhost"),
@@ -74,7 +75,7 @@ def carregar_configuracao() -> dict[str, str]:
     ]
 
     if faltando:
-        raise RuntimeError("Preencha no arquivo .env: " + ", ".join(faltando))
+        raise RuntimeError("Preencha a configuração: " + ", ".join(faltando))
 
     return config
 
