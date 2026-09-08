@@ -101,6 +101,10 @@ async function requisicao(caminho, opcoes = {}) {
     const payload = await lerResposta(resposta)
 
     if (!resposta.ok) {
+      if (resposta.status === 401 && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biblioavisa:unauthorized'))
+      }
+
       throw new ApiError(extrairMensagemSegura(payload, resposta.status), {
         status: resposta.status,
         details: payload,
