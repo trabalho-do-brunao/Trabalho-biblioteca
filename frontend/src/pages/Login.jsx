@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import loginReading from '../assets/auth/login-reading.png'
+import loginReading from '../assets/auth/login-reading.webp'
 import { useAuth } from '../auth/AuthContext'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
