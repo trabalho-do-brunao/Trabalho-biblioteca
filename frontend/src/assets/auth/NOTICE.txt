@@ -1,0 +1,1 @@
+Imagens fornecidas para o layout de Login e Cadastro.
