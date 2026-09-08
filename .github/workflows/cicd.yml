@@ -72,6 +72,7 @@ jobs:
         run: |
           cat > .env <<'EOF'
           APP_ENV=test
+          AUTH_SESSION_HOURS=8
           DB_HOST=127.0.0.1
           DB_PORT=5432
           DB_NAME=ecf_ci
@@ -100,6 +101,9 @@ jobs:
 
       - name: Testar geração de relatórios
         run: python scripts/test_relatorios_web.py
+
+      - name: Testar autenticação administrativa
+        run: python scripts/test_autenticacao.py
 
   construir:
     name: construir-imagem

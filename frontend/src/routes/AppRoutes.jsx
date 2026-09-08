@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import ProtectedRoute from '../auth/ProtectedRoute'
 import AppLayout from '../components/layout/AppLayout'
+import Cadastro from '../pages/Cadastro'
 import Configuracoes from '../pages/Configuracoes'
 import Dashboard from '../pages/Dashboard'
 import Emprestimos from '../pages/Emprestimos'
@@ -14,15 +16,18 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/cadastro" element={<Cadastro />} />
 
-      <Route element={<AppLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/livros" element={<Livros />} />
-        <Route path="/usuarios" element={<Usuarios />} />
-        <Route path="/emprestimos" element={<Emprestimos />} />
-        <Route path="/whatsapp" element={<WhatsApp />} />
-        <Route path="/relatorios" element={<Relatorios />} />
-        <Route path="/configuracoes" element={<Configuracoes />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/livros" element={<Livros />} />
+          <Route path="/usuarios" element={<Usuarios />} />
+          <Route path="/emprestimos" element={<Emprestimos />} />
+          <Route path="/whatsapp" element={<WhatsApp />} />
+          <Route path="/relatorios" element={<Relatorios />} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
+        </Route>
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />

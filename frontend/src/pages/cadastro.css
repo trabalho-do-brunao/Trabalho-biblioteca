@@ -1,0 +1,276 @@
+.cadastro-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
+  align-items: center;
+  gap: clamp(30px, 5vw, 76px);
+  padding: clamp(26px, 4vw, 60px);
+  background: #ffffff;
+}
+
+.cadastro-visual {
+  min-height: min(78vh, 780px);
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(9, 0, 255, 0.1), transparent 31%),
+    linear-gradient(145deg, #fafaff 0%, #eef1ff 100%);
+}
+
+.cadastro-visual::before,
+.cadastro-visual::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(9, 0, 255, 0.065);
+}
+
+.cadastro-visual::before {
+  width: 260px;
+  height: 260px;
+  top: -108px;
+  left: -74px;
+}
+
+.cadastro-visual::after {
+  width: 360px;
+  height: 360px;
+  right: -145px;
+  bottom: -145px;
+}
+
+.cadastro-library-scene {
+  position: relative;
+  z-index: 1;
+  width: min(84%, 570px);
+  display: grid;
+  place-items: center;
+  gap: 19px;
+  color: var(--color-primary-dark);
+}
+
+.cadastro-library-icon {
+  width: clamp(175px, 20vw, 310px);
+  height: clamp(175px, 20vw, 310px);
+  stroke-width: 1.3;
+}
+
+.cadastro-library-books {
+  width: min(100%, 480px);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+
+.cadastro-library-books span {
+  display: block;
+  min-height: 84px;
+  border-radius: 8px 8px 3px 3px;
+  background: #0900ff;
+  box-shadow: inset 0 -12px 0 rgba(255, 255, 255, 0.16);
+}
+
+.cadastro-library-books span:nth-child(2n) {
+  min-height: 120px;
+  background: #52dbd4;
+}
+
+.cadastro-library-books span:nth-child(3n) {
+  min-height: 148px;
+  background: #e66cae;
+}
+
+.cadastro-library-books span:nth-child(5n) {
+  min-height: 106px;
+  background: #f0ba5c;
+}
+
+.cadastro-library-scene p {
+  margin: 0;
+  max-width: 480px;
+  text-align: center;
+  color: #6b6d78;
+  line-height: 1.55;
+}
+
+.cadastro-panel {
+  width: min(100%, 780px);
+  justify-self: center;
+  padding: clamp(30px, 3.5vw, 46px);
+  border: 0;
+  border-radius: 30px;
+  background: #b9c9f0;
+  box-shadow: 0 24px 58px rgba(5, 0, 151, 0.15);
+}
+
+.cadastro-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  color: #0900ff;
+  text-align: left;
+}
+
+.cadastro-heading > svg {
+  width: 42px;
+  height: 42px;
+}
+
+.cadastro-heading h1 {
+  margin: 0;
+  font-size: clamp(1.9rem, 2.6vw, 2.65rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.cadastro-heading p {
+  margin: 5px 0 0;
+  color: #5e6070;
+  font-size: 0.93rem;
+}
+
+.cadastro-form {
+  display: grid;
+  gap: 20px;
+}
+
+.cadastro-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+}
+
+.cadastro-panel .ui-input {
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: #93f2ef;
+  box-shadow: none;
+}
+
+.cadastro-panel .ui-input:focus {
+  outline: 3px solid rgba(9, 0, 255, 0.22);
+}
+
+.cadastro-panel .ui-field-label {
+  color: #101018;
+  font-weight: 700;
+}
+
+.cadastro-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.cadastro-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  padding: 8px 0;
+  color: #050097;
+  background: transparent;
+  font-weight: 700;
+}
+
+.cadastro-back:hover {
+  text-decoration: underline;
+}
+
+.cadastro-back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cadastro-submit {
+  min-width: 190px;
+  min-height: 50px;
+  border-radius: 12px;
+  background: #003d78;
+  text-transform: uppercase;
+  font-style: italic;
+}
+
+.cadastro-restrito {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+
+@media (max-width: 1080px) {
+  .cadastro-page {
+    grid-template-columns: 1fr;
+    padding: 28px;
+  }
+
+  .cadastro-visual {
+    min-height: 260px;
+  }
+
+  .cadastro-library-icon {
+    width: 160px;
+    height: 160px;
+  }
+
+  .cadastro-library-books {
+    width: min(76%, 350px);
+  }
+
+  .cadastro-library-books span {
+    min-height: 48px;
+  }
+
+  .cadastro-library-books span:nth-child(2n) {
+    min-height: 66px;
+  }
+
+  .cadastro-library-books span:nth-child(3n) {
+    min-height: 82px;
+  }
+
+  .cadastro-library-books span:nth-child(5n) {
+    min-height: 58px;
+  }
+}
+
+@media (max-width: 680px) {
+  .cadastro-page {
+    padding: 16px;
+  }
+
+  .cadastro-visual {
+    display: none;
+  }
+
+  .cadastro-panel {
+    padding: 28px 20px;
+    border-radius: 22px;
+  }
+
+  .cadastro-heading {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .cadastro-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cadastro-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .cadastro-submit {
+    width: 100%;
+  }
+}

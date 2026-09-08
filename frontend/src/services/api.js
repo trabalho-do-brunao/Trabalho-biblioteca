@@ -93,6 +93,7 @@ async function requisicao(caminho, opcoes = {}) {
   try {
     const resposta = await fetch(`${API_URL}${caminho}`, {
       ...opcoes,
+      credentials: 'include',
       signal: controller.signal,
       headers,
     })
@@ -100,6 +101,10 @@ async function requisicao(caminho, opcoes = {}) {
     const payload = await lerResposta(resposta)
 
     if (!resposta.ok) {
+      if (resposta.status === 401 && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biblioavisa:unauthorized'))
+      }
+
       throw new ApiError(extrairMensagemSegura(payload, resposta.status), {
         status: resposta.status,
         details: payload,
@@ -127,6 +132,32 @@ async function requisicao(caminho, opcoes = {}) {
 
 export function verificarSaudeApi() {
   return requisicao('/api/health')
+}
+
+export function loginAdministrador(email, senha) {
+  return requisicao('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, senha }),
+  })
+}
+
+export function consultarSessaoAdministrador() {
+  return requisicao('/api/auth/session')
+}
+
+export function logoutAdministrador() {
+  return requisicao('/api/auth/logout', { method: 'POST' })
+}
+
+export function consultarStatusCadastroAdministrador() {
+  return requisicao('/api/auth/registration-status')
+}
+
+export function cadastrarAdministrador(dados) {
+  return requisicao('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(dados),
+  })
 }
 
 export function demonstrarIntegracao(dados) {

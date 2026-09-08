@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   BarChart3,
   BookOpen,
@@ -9,6 +10,8 @@ import {
   Users,
 } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
+
+import { useAuth } from '../../auth/AuthContext'
 
 const items = [
   { to: '/dashboard', label: 'Dashboard', icon: House },
@@ -22,10 +25,22 @@ const items = [
 
 export default function Sidebar({ open, onNavigate }) {
   const navigate = useNavigate()
+  const { sair } = useAuth()
+  const [saindo, setSaindo] = useState(false)
 
-  const handleExit = () => {
-    onNavigate?.()
-    navigate('/login')
+  const handleExit = async () => {
+    if (saindo) return
+    setSaindo(true)
+    try {
+      await sair()
+      onNavigate?.()
+      navigate('/login', { replace: true })
+    } catch {
+      // O cookie é HttpOnly; se o backend estiver indisponível não fingimos
+      // que a sessão foi encerrada apenas no frontend. O usuário pode tentar novamente.
+    } finally {
+      setSaindo(false)
+    }
   }
 
   return (
@@ -50,9 +65,15 @@ export default function Sidebar({ open, onNavigate }) {
         ))}
       </nav>
 
-      <button className="sidebar-exit" type="button" onClick={handleExit} title={!open ? 'Sair' : undefined}>
+      <button
+        className="sidebar-exit"
+        type="button"
+        onClick={handleExit}
+        disabled={saindo}
+        title={!open ? 'Sair' : undefined}
+      >
         <LogOut aria-hidden="true" />
-        <span>Sair</span>
+        <span>{saindo ? 'Saindo...' : 'Sair'}</span>
       </button>
     </aside>
   )
