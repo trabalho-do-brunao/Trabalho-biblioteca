@@ -6,18 +6,27 @@ import sys
 import uuid
 from pathlib import Path
 
+from fastapi import HTTPException
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.db import conectar
+from app.routes.auth import exigir_administrador
 from app.services.autenticacao import (
+    COOKIE_SESSAO,
     autenticar_administrador,
     buscar_administrador_por_token,
     criar_administrador,
     criar_sessao,
     encerrar_sessao,
 )
+
+
+class PedidoFake:
+    def __init__(self, cookies: dict[str, str]):
+        self.cookies = cookies
 
 
 def main() -> int:
@@ -54,6 +63,14 @@ def main() -> int:
         assert autenticado["email"] == email
         print("[OK] Credencial incorreta é rejeitada e credencial correta é aceita")
 
+        try:
+            exigir_administrador(PedidoFake({}))
+        except HTTPException as erro:
+            assert erro.status_code == 401
+        else:
+            raise AssertionError("Uma rota protegida deveria rejeitar requisição sem sessão.")
+        print("[OK] Requisição sem sessão é bloqueada com HTTP 401")
+
         sessao = criar_sessao(autenticado)
         token = sessao.token
         assert token
@@ -77,7 +94,10 @@ def main() -> int:
         sessao_valida = buscar_administrador_por_token(token)
         assert sessao_valida is not None
         assert int(sessao_valida["id"]) == administrador_id
-        print("[OK] Sessão válida identifica o administrador")
+
+        admin_rota = exigir_administrador(PedidoFake({COOKIE_SESSAO: token}))
+        assert int(admin_rota["id"]) == administrador_id
+        print("[OK] Sessão válida libera a proteção administrativa")
 
         encerrar_sessao(token)
         token = None
