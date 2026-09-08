@@ -1,11 +1,12 @@
-"""Inicializa o banco PostgreSQL do BiblioAvisa.
+"""Inicializa e atualiza o banco PostgreSQL do BiblioAvisa.
 
 Fluxo:
 1. Carrega as configurações do arquivo .env.
 2. Cria o banco definido em DB_NAME caso ele ainda não exista.
-3. Executa database/db.sql quando o banco ainda não possui as tabelas do projeto.
-4. Executa database/seed.sql para inserir os dados de demonstração.
-5. Valida se as tabelas principais foram criadas.
+3. Executa database/db.sql quando o banco ainda não possui as tabelas-base.
+4. Aplica, em ordem, as migrações idempotentes de database/migrations.
+5. Executa database/seed.sql para inserir os dados de demonstração.
+6. Valida se as tabelas obrigatórias foram criadas.
 
 O script não apaga tabelas ou dados existentes.
 """
@@ -25,15 +26,23 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = PROJECT_ROOT / "database" / "db.sql"
 SEED_PATH = PROJECT_ROOT / "database" / "seed.sql"
+MIGRATIONS_DIR = PROJECT_ROOT / "database" / "migrations"
 ENV_PATH = PROJECT_ROOT / ".env"
 
-REQUIRED_TABLES = {
+CORE_TABLES = {
     "usuarios",
     "livros",
     "emprestimos",
     "renovacoes",
     "mensagens",
 }
+
+AUTH_TABLES = {
+    "administradores",
+    "sessoes_admin",
+}
+
+REQUIRED_TABLES = CORE_TABLES | AUTH_TABLES
 
 
 def carregar_configuracao() -> dict[str, str]:
@@ -67,9 +76,7 @@ def carregar_configuracao() -> dict[str, str]:
     ]
 
     if faltando:
-        raise RuntimeError(
-            "Preencha no arquivo .env: " + ", ".join(faltando)
-        )
+        raise RuntimeError("Preencha no arquivo .env: " + ", ".join(faltando))
 
     return config
 
@@ -112,9 +119,7 @@ def garantir_banco(config: dict[str, str]) -> None:
 
             print(f"[INFO] Criando banco '{config['dbname']}'...")
             cursor.execute(
-                sql.SQL("CREATE DATABASE {};").format(
-                    sql.Identifier(config["dbname"])
-                )
+                sql.SQL("CREATE DATABASE {};").format(sql.Identifier(config["dbname"]))
             )
             print(f"[OK] Banco '{config['dbname']}' criado.")
     except psycopg2.Error as erro:
@@ -159,24 +164,39 @@ def executar_arquivo_sql(conexao, caminho: Path, descricao: str) -> None:
 
 
 def preparar_estrutura(conexao) -> None:
-    """Cria o schema quando vazio e detecta estruturas parciais/incompatíveis."""
+    """Cria as tabelas-base quando vazio e detecta estruturas-base parciais."""
     tabelas_existentes = listar_tabelas(conexao)
-    tabelas_projeto = tabelas_existentes & REQUIRED_TABLES
+    tabelas_projeto = tabelas_existentes & CORE_TABLES
 
     if not tabelas_projeto:
-        executar_arquivo_sql(conexao, SCHEMA_PATH, "estrutura do banco")
+        executar_arquivo_sql(conexao, SCHEMA_PATH, "estrutura base do banco")
         return
 
-    if REQUIRED_TABLES.issubset(tabelas_existentes):
-        print("[OK] As tabelas principais já existem; db.sql não será executado novamente.")
+    if CORE_TABLES.issubset(tabelas_existentes):
+        print("[OK] As tabelas-base já existem; db.sql não será executado novamente.")
         return
 
-    faltando = sorted(REQUIRED_TABLES - tabelas_existentes)
+    faltando = sorted(CORE_TABLES - tabelas_existentes)
     raise RuntimeError(
-        "O banco possui apenas parte da estrutura do BiblioAvisa. "
+        "O banco possui apenas parte da estrutura-base do BiblioAvisa. "
         "Tabelas faltando: " + ", ".join(faltando) + ". "
         "Para evitar apagar dados automaticamente, o script foi interrompido."
     )
+
+
+def aplicar_migracoes(conexao) -> None:
+    """Aplica migrações idempotentes em ordem de nome de arquivo."""
+    if not MIGRATIONS_DIR.exists():
+        print("[INFO] Nenhuma pasta de migrações encontrada.")
+        return
+
+    migracoes = sorted(MIGRATIONS_DIR.glob("*.sql"))
+    if not migracoes:
+        print("[INFO] Nenhuma migração SQL encontrada.")
+        return
+
+    for caminho in migracoes:
+        executar_arquivo_sql(conexao, caminho, f"migração {caminho.name}")
 
 
 def validar_banco(conexao) -> None:
@@ -209,6 +229,7 @@ def main() -> int:
         print("[OK] Conexão realizada com sucesso.")
 
         preparar_estrutura(conexao)
+        aplicar_migracoes(conexao)
         executar_arquivo_sql(conexao, SEED_PATH, "dados de demonstração")
         validar_banco(conexao)
 
