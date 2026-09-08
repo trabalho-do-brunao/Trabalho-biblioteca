@@ -33,9 +33,12 @@ export default function Sidebar({ open, onNavigate }) {
     setSaindo(true)
     try {
       await sair()
-    } finally {
       onNavigate?.()
       navigate('/login', { replace: true })
+    } catch {
+      // O cookie é HttpOnly; se o backend estiver indisponível não fingimos
+      // que a sessão foi encerrada apenas no frontend. O usuário pode tentar novamente.
+    } finally {
       setSaindo(false)
     }
   }
