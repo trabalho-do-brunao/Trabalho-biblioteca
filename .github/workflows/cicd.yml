@@ -119,12 +119,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose -f docker-compose.aws.yml up -d --build db api
+
+          # Reproduz o fluxo real da VM: banco -> estrutura/migrações -> API.
+          docker compose -f docker-compose.aws.yml up -d --build db
+          docker compose -f docker-compose.aws.yml run --rm api python scripts/init_db.py
+          docker compose -f docker-compose.aws.yml up -d api
 
           for tentativa in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
               echo "[OK] API respondeu ao health check pelo Docker Compose."
-              exit 0
+
+              if curl --fail --silent http://127.0.0.1:8000/api/auth/registration-status >/dev/null 2>&1; then
+                echo "[OK] API acessou o PostgreSQL inicializado pelo Docker Compose."
+                exit 0
+              fi
+
+              echo "[ERRO] API subiu, mas uma rota que usa PostgreSQL falhou."
+              docker compose -f docker-compose.aws.yml ps || true
+              docker compose -f docker-compose.aws.yml logs api db --tail=120 || true
+              exit 1
             fi
             sleep 1
           done

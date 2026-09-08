@@ -1,7 +1,8 @@
 """Conexão central da aplicação com o PostgreSQL.
 
-Este módulo concentra a leitura das variáveis do arquivo .env e a criação
-de conexões com o banco configurado em DB_NAME.
+Este módulo concentra a leitura das variáveis de ambiente e, quando existe,
+do arquivo .env local, além da criação de conexões com o banco configurado
+em DB_NAME.
 """
 
 from __future__ import annotations
@@ -20,14 +21,14 @@ ENV_PATH = PROJECT_ROOT / ".env"
 
 
 def carregar_configuracao() -> dict[str, str]:
-    """Carrega e valida as configurações necessárias para o PostgreSQL."""
-    if not ENV_PATH.exists():
-        raise RuntimeError(
-            "Arquivo .env não encontrado. Execute setup.bat ou copie "
-            ".env.example para .env e configure o PostgreSQL."
-        )
+    """Carrega e valida as configurações necessárias para o PostgreSQL.
 
-    load_dotenv(ENV_PATH)
+    Em desenvolvimento local, o .env da raiz é carregado quando existe.
+    Em Docker/AWS, as mesmas variáveis podem ser fornecidas diretamente pelo
+    ambiente do container, sem copiar o arquivo .env para dentro da imagem.
+    """
+    if ENV_PATH.exists():
+        load_dotenv(ENV_PATH, override=False)
 
     configuracao = {
         "host": os.getenv("DB_HOST", "localhost").strip(),
@@ -45,8 +46,9 @@ def carregar_configuracao() -> dict[str, str]:
     faltando = [nome for nome, valor in obrigatorias.items() if not valor]
 
     if faltando:
+        origem = "variáveis de ambiente ou arquivo .env"
         raise RuntimeError(
-            "Variáveis obrigatórias não configuradas no .env: "
+            f"Variáveis obrigatórias não configuradas nas {origem}: "
             + ", ".join(faltando)
         )
 
@@ -54,15 +56,15 @@ def carregar_configuracao() -> dict[str, str]:
 
 
 def conectar() -> PostgreSQLConnection:
-    """Abre e retorna uma conexão com o PostgreSQL configurado no .env."""
+    """Abre e retorna uma conexão com o PostgreSQL configurado."""
     configuracao = carregar_configuracao()
 
     try:
         return psycopg2.connect(**configuracao)
     except psycopg2.Error as erro:
         raise ConnectionError(
-            "Não foi possível conectar ao PostgreSQL. Confira o arquivo .env "
-            "e se o serviço PostgreSQL está em execução."
+            "Não foi possível conectar ao PostgreSQL. Confira as variáveis "
+            "de ambiente ou o arquivo .env e se o serviço PostgreSQL está em execução."
         ) from erro
 
 
