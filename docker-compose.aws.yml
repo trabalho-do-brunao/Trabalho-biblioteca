@@ -1,0 +1,127 @@
+name: biblioavisa
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ecf}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ecf}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - biblioavisa
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: biblioavisa-app:aws
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      DB_HOST: db
+      DB_PORT: "5432"
+      WHATSAPP_SERVICE_URL: http://baileys:3001
+      WHATSAPP_WEBHOOK_URL: http://webhook:3002/webhook/whatsapp
+      PORT: "8000"
+    ports:
+      - "${BIBLIOAVISA_HTTP_PORT:-8000}:8000"
+    volumes:
+      - reports_data:/app/reports
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - biblioavisa
+
+  webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: biblioavisa-app:aws
+    restart: unless-stopped
+    command:
+      - python
+      - -c
+      - from app.webhooks.whatsapp import executar_servidor; executar_servidor()
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      DB_HOST: db
+      DB_PORT: "5432"
+      WHATSAPP_WEBHOOK_HOST: 0.0.0.0
+      WHATSAPP_WEBHOOK_PORT: "3002"
+      WHATSAPP_SERVICE_URL: http://baileys:3001
+    expose:
+      - "3002"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - biblioavisa
+
+  baileys:
+    build:
+      context: ./whatsapp_service
+      dockerfile: Dockerfile
+    image: biblioavisa-baileys:aws
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BAILEYS_SERVICE_HOST: 0.0.0.0
+      BAILEYS_SERVICE_PORT: "3001"
+      BAILEYS_AUTH_DIR: /data/auth_info
+      WHATSAPP_WEBHOOK_URL: http://webhook:3002/webhook/whatsapp
+    expose:
+      - "3001"
+    volumes:
+      - whatsapp_auth:/data/auth_info
+    depends_on:
+      - webhook
+    networks:
+      - biblioavisa
+
+  automation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: biblioavisa-app:aws
+    restart: unless-stopped
+    command: ["python", "-m", "app.main", "--agendar"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      DB_HOST: db
+      DB_PORT: "5432"
+      WHATSAPP_SERVICE_URL: http://baileys:3001
+      WHATSAPP_WEBHOOK_URL: http://webhook:3002/webhook/whatsapp
+    volumes:
+      - reports_data:/app/reports
+    depends_on:
+      db:
+        condition: service_healthy
+      baileys:
+        condition: service_started
+    networks:
+      - biblioavisa
+
+volumes:
+  postgres_data:
+  whatsapp_auth:
+  reports_data:
+
+networks:
+  biblioavisa:
+    driver: bridge
