@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -81,6 +82,54 @@ def _avisar_env_desatualizado(valores: dict[str, str]) -> None:
 
 def _env_ativo(nome: str, padrao: str = "false") -> bool:
     return str(os.getenv(nome, padrao)).strip().lower() in {"1", "true", "yes", "sim", "on"}
+
+
+def _porta_configurada(nome: str, padrao: int) -> int:
+    texto = str(os.getenv(nome, str(padrao))).strip()
+    try:
+        porta = int(texto)
+    except ValueError as erro:
+        raise RuntimeError(f"{nome} deve conter uma porta numérica válida.") from erro
+
+    if porta < 1 or porta > 65535:
+        raise RuntimeError(f"{nome} deve estar entre 1 e 65535.")
+    return porta
+
+
+def _porta_em_uso(host: str, porta: int) -> bool:
+    """Verifica se já existe um processo aceitando conexões na porta informada."""
+    host_teste = str(host or "").strip()
+    if host_teste in {"", "0.0.0.0", "::"}:
+        host_teste = "127.0.0.1"
+
+    try:
+        with socket.create_connection((host_teste, porta), timeout=0.25):
+            return True
+    except (ConnectionRefusedError, TimeoutError, socket.timeout):
+        return False
+    except OSError:
+        # Se o host configurado não puder ser usado para uma conexão de teste,
+        # a criação real do serviço ainda produzirá o erro correspondente.
+        return False
+
+
+def _verificar_portas_livres(servicos: list[tuple[str, str, int, str]]) -> None:
+    ocupadas: list[str] = []
+
+    for nome, host, porta, dica in servicos:
+        if _porta_em_uso(host, porta):
+            ocupadas.append(
+                f"[ERRO] Porta {porta} ocupada ({nome}, {host}:{porta}). {dica}"
+            )
+
+    if not ocupadas:
+        return
+
+    raise RuntimeError(
+        "Não foi possível iniciar o BiblioAvisa porque existem portas em uso:\n"
+        + "\n".join(ocupadas)
+        + "\nFeche as instâncias antigas e execute run.bat novamente."
+    )
 
 
 def _localizar_node() -> str:
@@ -194,20 +243,53 @@ def main() -> int:
         automacao_ativa = _env_ativo("AUTOMACAO_ENABLED")
         node = _localizar_node()
         npm = _localizar_frontend()
+
+        api_host = "127.0.0.1"
+        api_porta = 8000
+        frontend_host = "127.0.0.1"
+        frontend_porta = 5173
+        webhook_host = (os.getenv("WHATSAPP_WEBHOOK_HOST") or "127.0.0.1").strip()
+        webhook_porta = _porta_configurada("WHATSAPP_WEBHOOK_PORT", 3002)
+        baileys_host = (os.getenv("BAILEYS_SERVICE_HOST") or "127.0.0.1").strip()
+        baileys_porta = _porta_configurada("BAILEYS_SERVICE_PORT", 3001)
+
+        _verificar_portas_livres(
+            [
+                (
+                    "API FastAPI",
+                    api_host,
+                    api_porta,
+                    "Normalmente isso indica outra API/BiblioAvisa ainda aberta.",
+                ),
+                (
+                    "Frontend React/Vite",
+                    frontend_host,
+                    frontend_porta,
+                    "Feche outro Vite ou terminal antigo do frontend.",
+                ),
+                (
+                    "Webhook WhatsApp",
+                    webhook_host,
+                    webhook_porta,
+                    "Feche outro webhook ou ajuste WHATSAPP_WEBHOOK_PORT no .env.",
+                ),
+                (
+                    "Baileys/WhatsApp",
+                    baileys_host,
+                    baileys_porta,
+                    "Feche outro Baileys ou ajuste BAILEYS_SERVICE_PORT no .env.",
+                ),
+            ]
+        )
+
         servidor = criar_servidor()
     except (RuntimeError, OSError, ValueError) as erro:
         print(f"[ERRO] {erro}")
         return 1
 
     host, porta = servidor.server_address
-    baileys_host = (os.getenv("BAILEYS_SERVICE_HOST") or "127.0.0.1").strip()
-    baileys_porta = (os.getenv("BAILEYS_SERVICE_PORT") or "3001").strip()
     automacao_hora = (os.getenv("AUTOMACAO_HORA") or "08:00").strip()
     automacao_timezone = (os.getenv("AUTOMACAO_TIMEZONE") or "America/Sao_Paulo").strip()
-    api_host = "127.0.0.1"
-    api_porta = "8000"
-    frontend_host = "127.0.0.1"
-    frontend_porta = "5173"
 
     thread_webhook = threading.Thread(
         target=servidor.serve_forever,
@@ -253,7 +335,7 @@ def main() -> int:
                 "--host",
                 api_host,
                 "--port",
-                api_porta,
+                str(api_porta),
             ],
             cwd=PROJECT_ROOT,
             prefixo="API",
@@ -262,7 +344,7 @@ def main() -> int:
         time.sleep(0.4)
 
         processo_frontend, _ = _iniciar_processo(
-            [npm, "run", "dev", "--", "--host", frontend_host, "--port", frontend_porta],
+            [npm, "run", "dev", "--", "--host", frontend_host, "--port", str(frontend_porta)],
             cwd=FRONTEND_DIR,
             prefixo="FRONTEND",
         )
