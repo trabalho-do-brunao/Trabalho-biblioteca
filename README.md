@@ -284,7 +284,7 @@ Depois de alterar essa opção, encerre e execute novamente:
 
 A autorização não é feita por telefone no `.env`. O BiblioAvisa consulta a tabela `usuarios`: somente usuários ativos cadastrados podem entrar no fluxo de renovação; contatos desconhecidos ou usuários inativos são ignorados silenciosamente.
 
-Enquanto a interface web ainda não estiver pronta, um usuário pode ser cadastrado com:
+Se for necessário cadastrar um usuário diretamente pelo terminal, também existe:
 
 ```powershell
 .venv\Scripts\python.exe scripts\cadastrar_usuario.py
@@ -321,8 +321,11 @@ Como o `setup.bat` é reutilizável, não é necessário executar `pip install`,
 Trabalho-biblioteca/
 │
 ├── README.md
-├── setup.bat                    # prepara Python, Node/Baileys, .env e PostgreSQL
-├── run.bat                      # inicia os serviços locais
+├── setup.bat                    # prepara o ambiente local no Windows
+├── run.bat                      # inicia os serviços locais no Windows
+├── setup_linux.sh               # prepara Docker e banco no Linux/AWS
+├── run_linux.sh                 # inicia/para/acompanha os serviços no Linux/AWS
+├── docker-compose.aws.yml       # orquestra os serviços da VM
 ├── requirements.txt
 ├── .env.example                 # modelo sem credenciais reais
 ├── .gitignore
@@ -336,7 +339,7 @@ Trabalho-biblioteca/
 │
 ├── database/
 │   ├── db.sql
-│   └── seed.sql
+│   └── migrations/              # migrações incrementais e idempotentes
 │
 ├── scripts/
 │   ├── init_db.py
@@ -352,10 +355,9 @@ Trabalho-biblioteca/
 │   └── auth_info/               # sessão local, ignorada pelo Git
 │
 ├── docs/
+│   └── aws_linux.md             # implantação Linux/AWS
 └── tests/
 ```
-
-A estrutura continuará evoluindo com a implementação da interface web.
 
 ---
 
@@ -371,7 +373,7 @@ As tabelas principais são:
 - `renovacoes`;
 - `mensagens`.
 
-O `scripts/init_db.py` cria o banco quando permitido, executa `database/db.sql`, aplica os dados de demonstração de forma segura e valida a estrutura esperada. Ele não deve apagar dados existentes durante uma inicialização normal.
+O `scripts/init_db.py` cria o banco quando permitido, executa `database/db.sql` quando a estrutura-base ainda não existe, aplica as migrações de `database/migrations` e valida as tabelas obrigatórias. Ele não insere dados de demonstração e não apaga dados existentes durante uma inicialização normal.
 
 ---
 
@@ -438,7 +440,7 @@ Atualmente estão implementados o banco PostgreSQL e suas migrações, cadastro 
 
 A interface React + Vite já possui Login, Cadastro, Dashboard, Usuários, Livros, Empréstimos, WhatsApp, Relatórios e Configurações conectados ao backend FastAPI. O projeto também possui testes automatizados, GitHub Actions e build Docker.
 
-A etapa final do desenvolvimento está concentrada na limpeza dos dados de demonstração, preparação da execução em Linux/AWS e validação ponta a ponta do WhatsApp na máquina virtual.
+Os dados permanentes de demonstração já foram removidos e a execução Linux/AWS já possui `setup_linux.sh`, `run_linux.sh` e Docker Compose. A próxima etapa é validar essa implantação em uma VM EC2 e, somente depois que banco, Login e frontend estiverem estáveis, realizar a validação ponta a ponta do WhatsApp na máquina virtual.
 
 ---
 
