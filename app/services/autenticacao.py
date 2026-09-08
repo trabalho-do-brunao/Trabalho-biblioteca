@@ -261,7 +261,22 @@ def encerrar_sessao(token: str | None) -> None:
     encerrar_sessao_repo(token_hash)
 
 
+def _env_bool_opcional(nome: str) -> bool | None:
+    texto = os.getenv(nome)
+    if texto is None or not texto.strip():
+        return None
+    return texto.strip().lower() in {"1", "true", "yes", "sim", "on"}
+
+
 def cookie_seguro() -> bool:
+    """Decide se o cookie exige HTTPS.
+
+    AUTH_COOKIE_SECURE permite testar a VM por HTTP antes da configuração de TLS.
+    Quando não informado, produção continua usando Secure por padrão.
+    """
+    configurado = _env_bool_opcional("AUTH_COOKIE_SECURE")
+    if configurado is not None:
+        return configurado
     return (os.getenv("APP_ENV") or "development").strip().lower() == "production"
 
 
