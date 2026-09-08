@@ -1,0 +1,1 @@
+Assets visuais de autenticação.
