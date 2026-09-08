@@ -28,6 +28,7 @@ services:
       - .env
     environment:
       APP_ENV: production
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       DB_HOST: db
       DB_PORT: "5432"
       WHATSAPP_SERVICE_URL: http://baileys:3001
