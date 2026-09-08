@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from '../auth/ProtectedRoute'
 import AppLayout from '../components/layout/AppLayout'
+import Cadastro from '../pages/Cadastro'
 import Configuracoes from '../pages/Configuracoes'
 import Dashboard from '../pages/Dashboard'
 import Emprestimos from '../pages/Emprestimos'
@@ -15,6 +16,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/cadastro" element={<Cadastro />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
