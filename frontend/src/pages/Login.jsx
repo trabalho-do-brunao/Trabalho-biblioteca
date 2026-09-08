@@ -1,26 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LibraryBig } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '../auth/AuthContext'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Feedback from '../components/ui/Feedback'
 import TextField from '../components/ui/TextField'
+import { mensagemErroApi } from '../services/api'
 import { emailValido, obrigatorio } from '../utils/validation'
 import './login.css'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { authenticated, entrar, loading } = useAuth()
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('info')
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ email: '', senha: '' })
   const [errors, setErrors] = useState({})
+
+  useEffect(() => {
+    if (!loading && authenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [authenticated, loading, navigate])
 
   const atualizarCampo = (campo) => (event) => {
     setForm((atual) => ({ ...atual, [campo]: event.target.value }))
     setErrors((atual) => ({ ...atual, [campo]: '' }))
+    setFeedback('')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     const novosErros = {}
 
@@ -35,14 +48,26 @@ export default function Login() {
     }
 
     setErrors(novosErros)
+    if (Object.keys(novosErros).length > 0) return
 
-    if (Object.keys(novosErros).length === 0) {
-      navigate('/dashboard')
+    setSubmitting(true)
+    setFeedback('')
+
+    try {
+      await entrar(form.email, form.senha)
+      const destino = location.state?.from || '/dashboard'
+      navigate(destino, { replace: true })
+    } catch (error) {
+      setFeedbackType('error')
+      setFeedback(mensagemErroApi(error))
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const showFutureFeature = (feature) => {
-    setFeedback(`${feature} será conectado em uma etapa posterior do projeto.`)
+    setFeedbackType('info')
+    setFeedback(feature)
   }
 
   return (
@@ -78,7 +103,7 @@ export default function Login() {
             value={form.email}
             onChange={atualizarCampo('email')}
             error={errors.email}
-            tooltip="Use um endereço no formato nome@dominio.com. Nesta etapa o login ainda é apenas de desenvolvimento."
+            tooltip="Informe o e-mail da sua conta administrativa do BiblioAvisa."
           />
 
           <TextField
@@ -90,7 +115,7 @@ export default function Login() {
             value={form.senha}
             onChange={atualizarCampo('senha')}
             error={errors.senha}
-            tooltip="Campo obrigatório para validar o formulário. A autenticação real será implementada em uma etapa específica."
+            tooltip="A senha é verificada pelo backend e nunca é armazenada em texto puro."
           />
 
           <div className="login-socials" aria-label="Opções futuras de acesso social">
@@ -98,7 +123,7 @@ export default function Login() {
               className="login-social-button login-social-google"
               type="button"
               aria-label="Entrar com Google"
-              onClick={() => showFutureFeature('O acesso com Google')}
+              onClick={() => showFutureFeature('O acesso com Google ainda não está habilitado.')}
             >
               G
             </button>
@@ -106,26 +131,26 @@ export default function Login() {
               className="login-social-button login-social-facebook"
               type="button"
               aria-label="Entrar com Facebook"
-              onClick={() => showFutureFeature('O acesso com Facebook')}
+              onClick={() => showFutureFeature('O acesso com Facebook ainda não está habilitado.')}
             >
               f
             </button>
           </div>
 
-          <Button className="login-submit" variant="dark" type="submit">
-            Entrar
+          <Button className="login-submit" variant="dark" type="submit" disabled={submitting || loading}>
+            {submitting ? 'Entrando...' : 'Entrar'}
           </Button>
 
           <button
             className="login-create-account"
             type="button"
-            onClick={() => showFutureFeature('O cadastro de conta')}
+            onClick={() => showFutureFeature('Contas administrativas são criadas pelo responsável do sistema.')}
           >
             Ou crie sua conta
           </button>
 
           {feedback ? (
-            <Feedback className="login-feedback" type="info">
+            <Feedback className="login-feedback" type={feedbackType}>
               {feedback}
             </Feedback>
           ) : null}
