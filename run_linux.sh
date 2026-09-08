@@ -66,6 +66,22 @@ esperar_db() {
   return 1
 }
 
+esperar_api() {
+  for tentativa in $(seq 1 30); do
+    if dc exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2).read()" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "[ERRO] A API não respondeu ao health check dentro do tempo esperado." >&2
+  echo "[INFO] Estado atual dos containers:" >&2
+  dc ps || true
+  echo "[INFO] Últimos logs da API:" >&2
+  dc logs api --tail=100 || true
+  return 1
+}
+
 iniciar() {
   echo "[INFO] Construindo/atualizando imagens..."
   dc build
@@ -79,6 +95,7 @@ iniciar() {
 
   echo "[INFO] Iniciando API, webhook e Baileys..."
   dc up -d api webhook baileys
+  esperar_api
 
   local automacao
   automacao="$(ler_env AUTOMACAO_ENABLED false)"
@@ -93,15 +110,6 @@ iniciar() {
 
   local porta_http
   porta_http="$(ler_env BIBLIOAVISA_HTTP_PORT 8000)"
-
-  if command -v curl >/dev/null 2>&1; then
-    for _ in $(seq 1 30); do
-      if curl --fail --silent "http://127.0.0.1:${porta_http}/api/health" >/dev/null 2>&1; then
-        break
-      fi
-      sleep 1
-    done
-  fi
 
   echo
   echo "======================================================"
