@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import bookOpen from '../assets/auth/book-open.png'
 import { useAuth } from '../auth/AuthContext'
 import Button from '../components/ui/Button'
-import Card from '../components/ui/Card'
 import Feedback from '../components/ui/Feedback'
 import TextField from '../components/ui/TextField'
 import {
@@ -77,17 +77,9 @@ export default function Cadastro() {
   const validar = () => {
     const novosErros = {}
 
-    if (!obrigatorio(form.nome) || form.nome.trim().length < 2) {
-      novosErros.nome = 'Informe o nome.'
-    }
-
-    if (!obrigatorio(form.sobrenome) || form.sobrenome.trim().length < 2) {
-      novosErros.sobrenome = 'Informe o sobrenome.'
-    }
-
-    if (!cpfValido(form.cpf)) {
-      novosErros.cpf = 'Informe um CPF válido.'
-    }
+    if (!obrigatorio(form.nome) || form.nome.trim().length < 2) novosErros.nome = 'Informe o nome.'
+    if (!obrigatorio(form.sobrenome) || form.sobrenome.trim().length < 2) novosErros.sobrenome = 'Informe o sobrenome.'
+    if (!cpfValido(form.cpf)) novosErros.cpf = 'Informe um CPF válido.'
 
     if (!dataBrValida(form.dataNascimento)) {
       novosErros.dataNascimento = 'Informe uma data válida no formato DD/MM/AAAA.'
@@ -96,21 +88,10 @@ export default function Cadastro() {
     }
 
     const telefone = somenteDigitos(form.whatsapp)
-    if (![10, 11].includes(telefone.length)) {
-      novosErros.whatsapp = 'Informe um WhatsApp com DDD.'
-    }
-
-    if (!emailValido(form.email)) {
-      novosErros.email = 'Informe um e-mail válido.'
-    }
-
-    if (form.senha.length < 8) {
-      novosErros.senha = 'A senha deve ter pelo menos 8 caracteres.'
-    }
-
-    if (form.confirmarSenha !== form.senha) {
-      novosErros.confirmarSenha = 'As senhas não coincidem.'
-    }
+    if (![10, 11].includes(telefone.length)) novosErros.whatsapp = 'Informe um WhatsApp com DDD.'
+    if (!emailValido(form.email)) novosErros.email = 'Informe um e-mail válido.'
+    if (form.senha.length < 8) novosErros.senha = 'A senha deve ter pelo menos 8 caracteres.'
+    if (form.confirmarSenha !== form.senha) novosErros.confirmarSenha = 'As senhas não coincidem.'
 
     setErrors(novosErros)
     return Object.keys(novosErros).length === 0
@@ -160,16 +141,16 @@ export default function Cadastro() {
       <section className="cadastro-shell" aria-labelledby="cadastro-title">
         <h1 id="cadastro-title" className="cadastro-title">REALIZE SEU CADASTRO</h1>
 
-        <div className="cadastro-book">
-          <div className="cadastro-book-spine" aria-hidden="true" />
+        <div className="cadastro-book-wrap">
+          <img className="cadastro-book-image" src={bookOpen} alt="Livro aberto" />
 
-          <Card className="cadastro-panel" as="section">
+          <div className="cadastro-overlay">
             {loading ? (
               <div className="cadastro-state">
                 <Feedback type="info">Verificando disponibilidade do cadastro...</Feedback>
               </div>
             ) : !podeCadastrar ? (
-              <div className="cadastro-restrito">
+              <div className="cadastro-state">
                 <Feedback type="info">
                   Já existe uma conta administrativa. Novos cadastros precisam ser feitos por um administrador autenticado.
                 </Feedback>
@@ -180,96 +161,14 @@ export default function Cadastro() {
             ) : (
               <form className="cadastro-form" onSubmit={handleSubmit} noValidate>
                 <div className="cadastro-grid">
-                  <TextField
-                    id="cadastro-nome"
-                    label="Nome:"
-                    placeholder="Digite seu nome"
-                    autoComplete="given-name"
-                    value={form.nome}
-                    onChange={atualizarCampo('nome')}
-                    error={errors.nome}
-                    tooltip="Informe somente seu primeiro nome ou nome principal."
-                  />
-
-                  <TextField
-                    id="cadastro-sobrenome"
-                    label="Sobrenome:"
-                    placeholder="Digite seu sobrenome"
-                    autoComplete="family-name"
-                    value={form.sobrenome}
-                    onChange={atualizarCampo('sobrenome')}
-                    error={errors.sobrenome}
-                  />
-
-                  <TextField
-                    id="cadastro-cpf"
-                    label="CPF:"
-                    placeholder="Digite seu CPF"
-                    inputMode="numeric"
-                    mask="cpf"
-                    value={form.cpf}
-                    onChange={atualizarCampo('cpf')}
-                    error={errors.cpf}
-                    tooltip="O CPF é validado antes do cadastro e não pode ser repetido."
-                  />
-
-                  <TextField
-                    id="cadastro-whatsapp"
-                    label="WhatsApp:"
-                    placeholder="Digite seu WhatsApp"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    mask="telefoneBr"
-                    value={form.whatsapp}
-                    onChange={atualizarCampo('whatsapp')}
-                    error={errors.whatsapp}
-                    tooltip="Informe DDD e número. O sistema armazena o telefone normalizado."
-                  />
-
-                  <TextField
-                    id="cadastro-data"
-                    label="Data de nascimento:"
-                    placeholder="Digite sua data de nascimento"
-                    inputMode="numeric"
-                    mask="dataBr"
-                    value={form.dataNascimento}
-                    onChange={atualizarCampo('dataNascimento')}
-                    error={errors.dataNascimento}
-                  />
-
-                  <TextField
-                    id="cadastro-email"
-                    label="E-mail:"
-                    type="email"
-                    placeholder="Digite seu e-mail"
-                    autoComplete="email"
-                    value={form.email}
-                    onChange={atualizarCampo('email')}
-                    error={errors.email}
-                  />
-
-                  <TextField
-                    id="cadastro-senha"
-                    label="Crie uma senha:"
-                    type="password"
-                    placeholder="Digite uma senha"
-                    autoComplete="new-password"
-                    value={form.senha}
-                    onChange={atualizarCampo('senha')}
-                    error={errors.senha}
-                    tooltip="A senha é armazenada somente como hash seguro no banco."
-                  />
-
-                  <TextField
-                    id="cadastro-confirmar-senha"
-                    label="Confirme sua senha:"
-                    type="password"
-                    placeholder="Digite novamente sua senha"
-                    autoComplete="new-password"
-                    value={form.confirmarSenha}
-                    onChange={atualizarCampo('confirmarSenha')}
-                    error={errors.confirmarSenha}
-                  />
+                  <TextField id="cadastro-nome" label="Nome:" placeholder="Digite seu nome" autoComplete="given-name" value={form.nome} onChange={atualizarCampo('nome')} error={errors.nome} tooltip="Informe somente seu primeiro nome ou nome principal." />
+                  <TextField id="cadastro-sobrenome" label="Sobrenome:" placeholder="Digite seu sobrenome" autoComplete="family-name" value={form.sobrenome} onChange={atualizarCampo('sobrenome')} error={errors.sobrenome} />
+                  <TextField id="cadastro-cpf" label="CPF:" placeholder="Digite seu CPF" inputMode="numeric" mask="cpf" value={form.cpf} onChange={atualizarCampo('cpf')} error={errors.cpf} tooltip="O CPF é validado antes do cadastro e não pode ser repetido." />
+                  <TextField id="cadastro-whatsapp" label="WhatsApp:" placeholder="Digite seu WhatsApp" inputMode="tel" autoComplete="tel" mask="telefoneBr" value={form.whatsapp} onChange={atualizarCampo('whatsapp')} error={errors.whatsapp} tooltip="Informe DDD e número. O sistema armazena o telefone normalizado." />
+                  <TextField id="cadastro-data" label="Data de nascimento:" placeholder="Digite sua data de nascimento" inputMode="numeric" mask="dataBr" value={form.dataNascimento} onChange={atualizarCampo('dataNascimento')} error={errors.dataNascimento} />
+                  <TextField id="cadastro-email" label="E-mail:" type="email" placeholder="Digite seu e-mail" autoComplete="email" value={form.email} onChange={atualizarCampo('email')} error={errors.email} />
+                  <TextField id="cadastro-senha" label="Crie uma senha:" type="password" placeholder="Digite uma senha" autoComplete="new-password" value={form.senha} onChange={atualizarCampo('senha')} error={errors.senha} tooltip="A senha é armazenada somente como hash seguro no banco." />
+                  <TextField id="cadastro-confirmar-senha" label="Confirme sua senha:" type="password" placeholder="Digite novamente sua senha" autoComplete="new-password" value={form.confirmarSenha} onChange={atualizarCampo('confirmarSenha')} error={errors.confirmarSenha} />
                 </div>
 
                 {feedback ? <Feedback className="cadastro-feedback" type={feedbackType}>{feedback}</Feedback> : null}
@@ -281,7 +180,7 @@ export default function Cadastro() {
                 </div>
               </form>
             )}
-          </Card>
+          </div>
         </div>
       </section>
     </main>
