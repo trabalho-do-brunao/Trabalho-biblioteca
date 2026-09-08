@@ -67,6 +67,9 @@ jobs:
       - name: Validar sintaxe Python
         run: python -m compileall -q app scripts
 
+      - name: Testar detecção de portas do inicializador
+        run: python scripts/test_iniciar_servicos.py
+
       - name: Preparar configuração de teste
         shell: bash
         run: |

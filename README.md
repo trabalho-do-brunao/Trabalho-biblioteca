@@ -8,7 +8,6 @@ Este repositório integra dois trabalhos acadêmicos relacionados à automação
 
 ## Trabalho 1 — Automação de Processos
 
-
 ### Integrantes do grupo
 
 - Guilherme Granemann Benvenutti
@@ -108,17 +107,19 @@ Relatório das atividades
 
 ## Tecnologias utilizadas
 
-- **Python 3.10+** — aplicação, regras de negócio, automações e webhook;
+- **Python 3.10+** — aplicação, regras de negócio, automações, API FastAPI e webhook;
 - **PostgreSQL 14+** — armazenamento dos dados do sistema;
 - **psycopg2** — conexão entre Python e PostgreSQL;
+- **FastAPI + Uvicorn** — API HTTP consumida pelo frontend;
 - **Google Books API** — consulta de livros pelo ISBN;
 - **Requests** — comunicação HTTP no backend;
-- **Node.js 20+** — execução do serviço local de WhatsApp;
+- **Node.js 20+** — frontend e serviço local de WhatsApp;
 - **Baileys** — integração não oficial com WhatsApp Web por sessão vinculada;
 - **APScheduler** — agendamento das automações;
 - **ReportLab** — geração dos relatórios em PDF;
 - **SMTP** — envio de relatórios por e-mail;
-- **React + Vite** — tecnologia planejada para a interface web;
+- **React + Vite** — interface web do sistema;
+- **Docker + GitHub Actions** — build e integração contínua;
 - **Git / GitHub** — versionamento e colaboração;
 - **Figma** — prototipação das telas e fluxos.
 
@@ -139,8 +140,6 @@ O pgAdmin 4 é opcional. Ele pode ser usado para visualizar o banco, mas não pr
 
 ## 2. Obter a pasta do projeto
 
-Há duas formas simples.
-
 ### Opção A — clonar com Git
 
 No PowerShell:
@@ -151,30 +150,32 @@ cd Trabalho-biblioteca
 git switch repositorio-principal
 ```
 
-### Opção B — baixar a pasta pelo GitHub
+### Opção B — baixar pelo GitHub
 
-Também é possível baixar o repositório como ZIP pelo GitHub, extrair a pasta em um local de sua preferência e abrir um PowerShell dentro da pasta extraída.
+Também é possível baixar o repositório como ZIP pelo GitHub, extrair a pasta e abrir um PowerShell na raiz do projeto.
 
-Ao terminar esta etapa, o terminal deve estar na raiz do projeto, onde existem os arquivos:
+Ao terminar esta etapa, o terminal deve estar na pasta onde existem:
 
 ```text
 setup.bat
 run.bat
 README.md
 requirements.txt
+frontend/
+whatsapp_service/
 ```
 
 ## 3. Executar o instalador automático
 
-Na raiz do projeto, execute:
+Na raiz do projeto:
 
 ```powershell
 .\setup.bat
 ```
 
-**Não crie o `.env` manualmente antes disso.** O próprio `setup.bat` cria o arquivo a partir de `.env.example` quando necessário e preserva o arquivo caso ele já exista.
+**Não é necessário criar o `.env` manualmente antes disso.** O próprio `setup.bat` cria o arquivo a partir de `.env.example` quando necessário e preserva o `.env` caso ele já exista.
 
-O instalador faz automaticamente a preparação do projeto:
+O instalador prepara backend e frontend:
 
 ```text
 setup.bat
@@ -187,56 +188,78 @@ instala/atualiza requirements.txt
    ↓
 instala/atualiza dependências do Baileys com npm.cmd
    ↓
-cria .env se ainda não existir
+instala/atualiza dependências do React/Vite com npm.cmd
+   ↓
+cria .env e frontend/.env quando ainda não existem
    ↓
 abre o .env para preencher os valores locais necessários
    ↓
-cria/valida o PostgreSQL e as tabelas
+cria/atualiza/valida o PostgreSQL e aplica as migrações
 ```
 
-Na primeira execução, quando o Bloco de Notas abrir o `.env`, preencha os valores locais necessários, principalmente a senha do PostgreSQL. Salve o arquivo e volte para a janela do instalador.
+Na primeira execução, quando o Bloco de Notas abrir o `.env`, preencha apenas os valores locais necessários, principalmente a senha do PostgreSQL. Salve o arquivo e volte para a janela do instalador.
 
 O `.env` contém informações locais e não deve ser enviado ao GitHub. Não copie credenciais reais para `.env.example`.
 
-O `setup.bat` pode ser executado novamente no futuro. Ele preserva o `.env`, atualiza as dependências e valida o banco sem apagar os dados existentes em uma execução normal.
+O `setup.bat` é reutilizável. Ele pode ser executado novamente após um `git pull` para sincronizar dependências e aplicar novas migrações sem apagar o `.env` ou os dados existentes em uma execução normal.
 
 ## 4. Iniciar o sistema
 
-Depois que o `setup.bat` terminar com sucesso, execute:
+Depois que o `setup.bat` terminar com sucesso:
 
 ```powershell
 .\run.bat
 ```
 
-O `run.bat` utiliza automaticamente o Python da `.venv`; não é necessário ativar o ambiente virtual manualmente.
+O `run.bat` utiliza automaticamente o Python da `.venv`; não é necessário ativar o ambiente virtual manualmente e não é necessário abrir vários terminais.
 
-Ele inicia no mesmo terminal:
+Ele inicia e supervisiona:
 
 ```text
 run.bat
    ↓
 scripts/iniciar_servicos.py
-   ├── Webhook Python  → 127.0.0.1:3002
-   └── Baileys         → 127.0.0.1:3001
+   ├── API FastAPI       → http://127.0.0.1:8000
+   ├── Frontend React    → http://127.0.0.1:5173
+   ├── Webhook WhatsApp  → http://127.0.0.1:3002
+   ├── Baileys           → http://127.0.0.1:3001
+   └── Automação diária  → opcional, conforme o .env
 ```
 
-O resultado esperado inclui mensagens semelhantes a:
+O terminal mostra os endereços dos serviços durante a inicialização. Para acessar a aplicação em desenvolvimento, abra:
 
 ```text
-[WEBHOOK] [OK] http://127.0.0.1:3002/webhook/whatsapp
-[BAILEYS] [OK] Serviço Baileys local em http://127.0.0.1:3001
-[BAILEYS] [OK] WhatsApp conectado pelo Baileys.
+http://127.0.0.1:5173
 ```
 
-Para encerrar os serviços, pressione:
+A API pode ser verificada em:
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+Para encerrar todos os processos iniciados pelo `run.bat`, pressione:
 
 ```text
 Ctrl + C
 ```
 
-## Resumo da primeira instalação
+O inicializador encerra API, Vite, Baileys, webhook e automação de forma centralizada.
 
-Para quem já possui Python, PostgreSQL, Node.js e Git instalados, o processo principal é:
+### Verificação de portas
+
+Antes de iniciar os serviços, o BiblioAvisa verifica as portas usadas localmente:
+
+```text
+8000 → API FastAPI
+5173 → Frontend React/Vite
+3002 → Webhook WhatsApp
+3001 → Baileys
+```
+
+Se uma delas já estiver ocupada, o `run.bat` interrompe a inicialização e informa qual porta e qual serviço estão em conflito. Isso normalmente significa que outra instância do BiblioAvisa, Vite, FastAPI ou Baileys ainda está aberta.
+
+## Resumo da primeira instalação
 
 ```powershell
 git clone https://github.com/trabalho-do-brunao/Trabalho-biblioteca.git
@@ -246,7 +269,7 @@ git switch repositorio-principal
 .\run.bat
 ```
 
-Se o projeto tiver sido baixado como ZIP, basta entrar na pasta extraída e executar os dois BATs na mesma ordem:
+Se o projeto tiver sido baixado como ZIP, basta entrar na pasta extraída e executar:
 
 ```powershell
 .\setup.bat
@@ -273,7 +296,7 @@ O envio de mensagens funciona independentemente do recebimento automático. Para
 WHATSAPP_INBOUND_ENABLED=true
 ```
 
-Depois de alterar essa opção, encerre e execute novamente:
+Depois de alterar essa opção, reinicie:
 
 ```powershell
 .\run.bat
@@ -281,19 +304,13 @@ Depois de alterar essa opção, encerre e execute novamente:
 
 A autorização não é feita por telefone no `.env`. O BiblioAvisa consulta a tabela `usuarios`: somente usuários ativos cadastrados podem entrar no fluxo de renovação; contatos desconhecidos ou usuários inativos são ignorados silenciosamente.
 
-Enquanto a interface web ainda não estiver pronta, um usuário pode ser cadastrado com:
-
-```powershell
-.venv\Scripts\python.exe scripts\cadastrar_usuario.py
-```
+Os leitores podem ser administrados diretamente pela tela **Usuários** da interface web.
 
 ---
 
 # Uso diário
 
-Em um computador que já passou pelo `setup.bat`, normalmente basta atualizar o código e iniciar o sistema.
-
-Se o projeto foi clonado com Git:
+Em um computador que já passou pelo `setup.bat`, normalmente basta atualizar o código e iniciar o sistema:
 
 ```powershell
 git switch repositorio-principal
@@ -301,14 +318,14 @@ git pull
 .\run.bat
 ```
 
-Se uma atualização trouxer mudanças de dependências, ou se houver dúvida sobre o ambiente local, execute novamente:
+Se uma atualização trouxer dependências ou migrações novas, ou se houver dúvida sobre o ambiente local:
 
 ```powershell
 .\setup.bat
 .\run.bat
 ```
 
-Como o `setup.bat` é reutilizável, não é necessário executar `pip install`, `npm install` ou recriar `.env` manualmente como parte do fluxo normal.
+Como o `setup.bat` é reutilizável, não é necessário executar `pip install`, `npm install` ou recriar `.env` manualmente no fluxo normal.
 
 ---
 
@@ -318,29 +335,35 @@ Como o `setup.bat` é reutilizável, não é necessário executar `pip install`,
 Trabalho-biblioteca/
 │
 ├── README.md
-├── setup.bat                    # prepara Python, Node/Baileys, .env e PostgreSQL
-├── run.bat                      # inicia os serviços locais
+├── setup.bat                    # prepara backend, frontend, .env e banco
+├── run.bat                      # inicia todos os serviços locais
 ├── requirements.txt
+├── Dockerfile
 ├── .env.example                 # modelo sem credenciais reais
-├── .gitignore
+├── .github/workflows/           # CI/CD GitHub Actions
 │
 ├── app/
+│   ├── api.py                   # API FastAPI
 │   ├── db.py
-│   ├── repositories/            # acesso aos dados do PostgreSQL
-│   ├── services/                # regras e integrações da aplicação
-│   ├── automation/              # verificações e envio de notificações
-│   └── webhooks/                # recebimento das respostas do WhatsApp
+│   ├── routes/                  # endpoints HTTP
+│   ├── repositories/            # acesso ao PostgreSQL
+│   ├── services/                # regras e integrações
+│   ├── automation/              # verificações e notificações
+│   └── webhooks/                # respostas do WhatsApp
+│
+├── frontend/                    # React + Vite
+│   ├── src/
+│   └── package.json
 │
 ├── database/
 │   ├── db.sql
+│   ├── migrations/
 │   └── seed.sql
 │
 ├── scripts/
 │   ├── init_db.py
 │   ├── iniciar_servicos.py
-│   ├── cadastrar_usuario.py
-│   ├── cadastrar_livro_isbn.py
-│   ├── gerar_relatorio_pdf.py
+│   ├── criar_admin.py
 │   └── scripts de teste
 │
 ├── whatsapp_service/
@@ -352,23 +375,31 @@ Trabalho-biblioteca/
 └── tests/
 ```
 
-A estrutura continuará evoluindo com a implementação da interface web.
-
 ---
 
 ## Banco de dados
 
 O banco padrão é `ecf`, utilizando o schema `public`.
 
-As tabelas principais são:
+As tabelas principais incluem:
 
 - `usuarios`;
 - `livros`;
 - `emprestimos`;
 - `renovacoes`;
-- `mensagens`.
+- `mensagens`;
+- `administradores`;
+- `sessoes_admin`.
 
-O `scripts/init_db.py` cria o banco quando permitido, executa `database/db.sql`, aplica os dados de demonstração de forma segura e valida a estrutura esperada. Ele não deve apagar dados existentes durante uma inicialização normal.
+O `scripts/init_db.py` cria o banco quando permitido, executa a estrutura base quando necessário, aplica as migrações em ordem e valida a estrutura esperada. Ele não apaga os dados existentes durante uma inicialização normal.
+
+---
+
+## Autenticação administrativa
+
+As contas que acessam o painel são separadas dos leitores da biblioteca. O Login usa uma sessão com cookie `HttpOnly`, e as senhas são persistidas somente em formato de hash.
+
+Na primeira instalação, enquanto ainda não existir nenhuma conta administrativa, é possível utilizar a tela de Cadastro. Contas adicionais são criadas por um administrador autenticado em **Configurações → Cadastrar administrador**.
 
 ---
 
@@ -376,7 +407,7 @@ O `scripts/init_db.py` cria o banco quando permitido, executa `database/db.sql`,
 
 ### `run.bat` informa que `.venv` ou `node_modules` não existe
 
-Execute novamente o instalador:
+Execute novamente:
 
 ```powershell
 .\setup.bat
@@ -384,7 +415,7 @@ Execute novamente o instalador:
 
 ### PowerShell bloqueia `npm.ps1`
 
-O fluxo normal não precisa executar `npm install` manualmente. O `setup.bat` chama `npm.cmd` diretamente e evita esse bloqueio do PowerShell.
+O fluxo normal não depende de `npm.ps1`. O `setup.bat` utiliza `npm.cmd` para preparar tanto o frontend quanto o serviço WhatsApp.
 
 ### Erro de conexão com PostgreSQL
 
@@ -394,15 +425,17 @@ Confira se o serviço PostgreSQL está iniciado. Depois execute:
 .\setup.bat
 ```
 
-Se o instalador indicar erro de credenciais, corrija somente o `.env` local e execute o `setup.bat` novamente.
+Se o instalador indicar erro de credenciais, corrija somente o `.env` local e execute novamente.
 
-### Portas 3001 ou 3002 já estão em uso
+### Porta 8000, 5173, 3001 ou 3002 já está em uso
 
-Feche instâncias antigas do BiblioAvisa ou terminais que ainda estejam executando os serviços e rode novamente:
+O `run.bat` agora identifica a porta ocupada antes de iniciar o restante do sistema. Feche a instância antiga indicada no terminal e execute novamente:
 
 ```powershell
 .\run.bat
 ```
+
+As portas 3001 e 3002 podem ser ajustadas pelas configurações do `.env` quando necessário. As portas 8000 e 5173 são as portas locais padrão do backend e frontend durante o desenvolvimento.
 
 ### WhatsApp não processa `RENOVAR`
 
@@ -431,14 +464,16 @@ O `.env.example` deve conter somente nomes de variáveis e valores de exemplo se
 
 ## Estado atual do desenvolvimento
 
-Já estão implementados o banco de dados, cadastro de usuários, integração com Google Books, empréstimos e devoluções, verificação dos prazos obrigatórios, envio pelo WhatsApp via Baileys, renovação por resposta, relatórios em PDF e o inicializador conjunto `run.bat`.
+Já estão integrados o banco PostgreSQL, cadastro e gestão de usuários, acervo com Google Books, empréstimos e devoluções, Dashboard, notificações e renovação pelo WhatsApp, relatórios em PDF/e-mail, análise de risco, agendamento das automações, autenticação administrativa e a interface React + Vite.
 
-As próximas etapas incluem envio de relatório por e-mail, diferencial de análise de risco, agendamento/orquestração do fluxo principal, interface web e testes/documentação finais.
+O projeto também possui testes automatizados e um pipeline GitHub Actions que valida frontend, backend, PostgreSQL e a imagem Docker antes das etapas de publicação/deploy configuradas.
+
+A limpeza dos dados de demonstração do `database/seed.sql` será realizada somente após as validações finais do sistema, mantendo depois apenas o registro de teste controlado definido pelo grupo.
 
 ---
 
 ## Interface web
 
-A interface escolhida para o projeto será **web**, baseada nas telas desenhadas no Figma. A implementação prevista utilizará React + Vite e consumirá o backend Python sem duplicar as regras de negócio já existentes.
+A interface é implementada em **React + Vite** e consome a API FastAPI. As regras de negócio definitivas permanecem no backend Python.
 
-O objetivo é permitir pela interface operações como cadastro e consulta de usuários, busca e cadastro de livros por ISBN, empréstimos, devoluções, consulta de atrasos, mensagens e relatórios.
+Atualmente a interface possui Login/Cadastro administrativo, Dashboard, Usuários, Livros, Empréstimos, WhatsApp, Relatórios e Configurações, com validações, máscaras, tooltips e tratamento controlado de erros.
