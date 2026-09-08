@@ -149,6 +149,17 @@ export function logoutAdministrador() {
   return requisicao('/api/auth/logout', { method: 'POST' })
 }
 
+export function consultarStatusCadastroAdministrador() {
+  return requisicao('/api/auth/registration-status')
+}
+
+export function cadastrarAdministrador(dados) {
+  return requisicao('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(dados),
+  })
+}
+
 export function demonstrarIntegracao(dados) {
   return requisicao('/api/demo/integracao', {
     method: 'POST',
