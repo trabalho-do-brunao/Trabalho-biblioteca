@@ -1,0 +1,153 @@
+.relatorios-page {
+  display: grid;
+  gap: 22px;
+}
+
+.relatorios-header {
+  align-items: flex-start;
+}
+
+.relatorios-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 20px;
+}
+
+.relatorios-panel {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: var(--shadow-card);
+}
+
+.relatorios-panel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.relatorios-panel p {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.relatorios-panel-heading {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.relatorios-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 13px;
+  background: rgba(9, 0, 255, 0.08);
+  color: var(--color-primary-dark);
+}
+
+.relatorios-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.relatorios-periodo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.relatorios-periodo label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.relatorios-periodo input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  padding: 0 12px;
+  font: inherit;
+  background: var(--color-white);
+  color: var(--color-text);
+}
+
+.relatorios-periodo input:focus {
+  outline: 3px solid rgba(9, 0, 255, 0.12);
+  border-color: var(--color-primary);
+}
+
+.relatorios-reset {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary-dark);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.relatorios-reset svg {
+  width: 16px;
+  height: 16px;
+}
+
+.relatorios-actions-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.relatorios-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.relatorios-actions .ui-button {
+  justify-content: center;
+  width: 100%;
+}
+
+.relatorios-actions .ui-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.relatorios-security-note {
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.82rem;
+}
+
+.relatorios-feedback {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .relatorios-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .relatorios-panel {
+    padding: 17px;
+    border-radius: 15px;
+  }
+
+  .relatorios-periodo {
+    grid-template-columns: 1fr;
+  }
+}
