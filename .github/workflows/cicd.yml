@@ -103,6 +103,9 @@ jobs:
       - name: Testar empréstimos, devoluções e estoque
         run: python scripts/test_emprestimos_fluxo.py
 
+      - name: Testar lembrete manual de renovação
+        run: python scripts/test_lembrete_renovacao_manual.py
+
       - name: Testar indicadores do dashboard
         run: python scripts/test_dashboard.py
 

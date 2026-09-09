@@ -27,3 +27,9 @@ export function registrarDevolucao(emprestimoId, dados = {}) {
     body: JSON.stringify(dados),
   })
 }
+
+export function enviarLembreteRenovacao(emprestimoId) {
+  return requisicao(`/api/emprestimos/${emprestimoId}/lembrete-renovacao`, {
+    method: 'POST',
+  })
+}
