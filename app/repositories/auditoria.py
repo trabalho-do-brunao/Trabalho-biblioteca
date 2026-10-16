@@ -46,3 +46,34 @@ def registrar_evento(
         raise
     finally:
         conexao.close()
+
+
+def registrar_evento_na_transacao(
+    cursor,
+    *,
+    acao: str,
+    entidade: str,
+    entidade_id: int,
+    ator_id: int | None = None,
+) -> int:
+    """Insere evento usando o cursor da operação principal.
+
+    O chamador controla commit e rollback. Não usar sem a migração
+    auditoria_eventos aplicada ao banco de destino.
+    """
+    if acao not in ACOES_PERMITIDAS:
+        raise ValueError("Ação de auditoria não permitida.")
+    if not isinstance(entidade, str) or not entidade.strip() or len(entidade) > 60:
+        raise ValueError("Entidade inválida.")
+    if not isinstance(entidade_id, int) or isinstance(entidade_id, bool) or entidade_id <= 0:
+        raise ValueError("Identificador da entidade inválido.")
+    if ator_id is not None and (
+        not isinstance(ator_id, int) or isinstance(ator_id, bool) or ator_id <= 0
+    ):
+        raise ValueError("Identificador do ator inválido.")
+    cursor.execute(
+        """INSERT INTO auditoria_eventos (acao, entidade, entidade_id, ator_id)
+           VALUES (%s, %s, %s, %s) RETURNING id""",
+        (acao, entidade.strip(), entidade_id, ator_id),
+    )
+    return int(cursor.fetchone()[0])
