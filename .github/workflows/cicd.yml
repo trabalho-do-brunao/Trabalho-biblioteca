@@ -70,6 +70,9 @@ jobs:
       - name: Validar scripts Linux/AWS
         run: bash -n setup_linux.sh run_linux.sh
 
+      - name: Testar gateway do inicializador Linux/AWS
+        run: python scripts/test_run_linux_gateway.py
+
       - name: Testar detecção de portas do inicializador
         run: python scripts/test_iniciar_servicos.py
 
