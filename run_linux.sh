@@ -82,6 +82,22 @@ esperar_api() {
   return 1
 }
 
+esperar_gateway() {
+  for tentativa in $(seq 1 30); do
+    if dc exec -T nginx wget -q -O /dev/null http://127.0.0.1/api/health >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "[ERRO] O Nginx não respondeu ao health check dentro do tempo esperado." >&2
+  echo "[INFO] Estado atual dos containers:" >&2
+  dc ps || true
+  echo "[INFO] Últimos logs do Nginx e da API:" >&2
+  dc logs nginx api --tail=100 || true
+  return 1
+}
+
 iniciar() {
   echo "[INFO] Construindo/atualizando imagens..."
   dc build
@@ -93,9 +109,10 @@ iniciar() {
   echo "[INFO] Aplicando estrutura e migrações do banco..."
   dc run --rm api python scripts/init_db.py
 
-  echo "[INFO] Iniciando API, webhook e Baileys..."
-  dc up -d api webhook baileys
+  echo "[INFO] Iniciando API, webhook, Baileys e Nginx..."
+  dc up -d api webhook baileys nginx
   esperar_api
+  esperar_gateway
 
   local automacao
   automacao="$(ler_env AUTOMACAO_ENABLED false)"
@@ -108,14 +125,19 @@ iniciar() {
     dc rm -f automation >/dev/null 2>&1 || true
   fi
 
-  local porta_http
-  porta_http="$(ler_env BIBLIOAVISA_HTTP_PORT 8000)"
+  local porta_http url_publica
+  porta_http="$(ler_env BIBLIOAVISA_HTTP_PORT 80)"
+  if [[ "$porta_http" == "80" ]]; then
+    url_publica="http://IP_PUBLICO_DA_VM"
+  else
+    url_publica="http://IP_PUBLICO_DA_VM:${porta_http}"
+  fi
 
   echo
   echo "======================================================"
   echo "[OK] BiblioAvisa iniciado na AWS/Linux."
   echo "======================================================"
-  echo "Aplicação: http://IP_PUBLICO_DA_VM:${porta_http}"
+  echo "Aplicação: ${url_publica}"
   echo
   echo "Status:"
   dc ps
