@@ -34,13 +34,25 @@ services:
       WHATSAPP_SERVICE_URL: http://baileys:3001
       WHATSAPP_WEBHOOK_URL: http://webhook:3002/webhook/whatsapp
       PORT: "8000"
-    ports:
-      - "${BIBLIOAVISA_HTTP_PORT:-8000}:8000"
+    expose:
+      - "8000"
     volumes:
       - reports_data:/app/reports
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - biblioavisa
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${BIBLIOAVISA_HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
     networks:
       - biblioavisa
 
