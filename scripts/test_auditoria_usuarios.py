@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 from app.repositories.usuarios import cadastrar_usuario, atualizar_usuario, definir_usuario_ativo
 
+
 class TestAuditoriaUsuarios(unittest.TestCase):
     def setUp(self):
         self.conexao = MagicMock()
@@ -13,7 +14,7 @@ class TestAuditoriaUsuarios(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
 
     def test_cadastro_registra_auditoria_antes_do_commit(self):
-        self.cursor.fetchone.side_effect = [{"id": 7, "nome": "Ana"}, (21,)]
+        self.cursor.fetchone.side_effect = [{"id": 7, "nome": "Ana"}, {"id": 21}]
         usuario = cadastrar_usuario("Ana", "11987654321")
         self.assertEqual(usuario["id"], 7)
         self.assertEqual(self.cursor.execute.call_count, 2)
@@ -26,7 +27,7 @@ class TestAuditoriaUsuarios(unittest.TestCase):
         self.assertEqual(self.cursor.execute.call_count, 1)
 
     def test_status_registra_auditoria(self):
-        self.cursor.fetchone.side_effect = [{"id": 7, "ativo": False}, (22,)]
+        self.cursor.fetchone.side_effect = [{"id": 7, "ativo": False}, {"id": 22}]
         definir_usuario_ativo(7, False)
         self.assertEqual(self.cursor.execute.call_count, 2)
         self.assertEqual(self.cursor.execute.call_args_list[1].args[1][0], "usuario.status_alterado")
@@ -37,6 +38,7 @@ class TestAuditoriaUsuarios(unittest.TestCase):
             cadastrar_usuario("Ana", "11987654321")
         self.conexao.commit.assert_not_called()
         self.conexao.close.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
