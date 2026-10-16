@@ -10,6 +10,7 @@ from app.repositories.mensagens import (
     marcar_mensagem_falha,
 )
 from app.services.whatsapp import ProvedorWhatsApp, obter_provedor_whatsapp
+from app.services.falhas_whatsapp import classificar_falha
 
 
 def processar_mensagens_pendentes(
@@ -55,6 +56,7 @@ def processar_mensagens_pendentes(
                         "status": "erro_persistencia",
                         "erro": str(erro_persistencia),
                         "erro_original": str(erro),
+                        "falha_operacional": classificar_falha(erro),
                     }
                 )
                 continue
@@ -64,6 +66,7 @@ def processar_mensagens_pendentes(
                     "mensagem_id": mensagem_id,
                     "status": "falha",
                     "erro": str(erro),
+                    "falha_operacional": classificar_falha(erro),
                 }
             )
 
