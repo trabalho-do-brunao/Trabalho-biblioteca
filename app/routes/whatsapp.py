@@ -8,6 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.repositories.whatsapp import listar_historico_whatsapp, obter_resumo_whatsapp
+from app.services.status_whatsapp import enriquecer_mensagem
 
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
@@ -69,7 +70,7 @@ def listar_mensagens(
         )
         resumo = obter_resumo_whatsapp()
         return {
-            "mensagens": mensagens,
+            "mensagens": [enriquecer_mensagem(mensagem) for mensagem in mensagens],
             "total_filtrado": len(mensagens),
             "resumo": resumo,
         }
