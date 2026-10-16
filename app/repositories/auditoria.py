@@ -4,6 +4,9 @@ A criação da tabela é uma migração separada; não registra dados pessoais
 ou conteúdo de mensagens nos detalhes.
 """
 from __future__ import annotations
+
+from collections.abc import Mapping
+
 from app.db import conectar
 
 ACOES_PERMITIDAS = frozenset({
@@ -12,6 +15,14 @@ ACOES_PERMITIDAS = frozenset({
     "emprestimo.devolvido", "renovacao.aprovada", "renovacao.recusada",
     "configuracao.alterada",
 })
+
+
+def _extrair_id_retorno(registro) -> int:
+    """Lê ``RETURNING id`` tanto de cursor comum quanto de RealDictCursor."""
+    if isinstance(registro, Mapping):
+        return int(registro["id"])
+    return int(registro[0])
+
 
 def registrar_evento(
     *, acao: str, entidade: str, entidade_id: int,
@@ -38,9 +49,9 @@ def registrar_evento(
                    VALUES (%s, %s, %s, %s) RETURNING id""",
                 (acao, entidade, int(entidade_id), int(ator_id) if ator_id else None),
             )
-            identificador = cursor.fetchone()[0]
+            identificador = _extrair_id_retorno(cursor.fetchone())
         conexao.commit()
-        return int(identificador)
+        return identificador
     except Exception:
         conexao.rollback()
         raise
@@ -76,4 +87,4 @@ def registrar_evento_na_transacao(
            VALUES (%s, %s, %s, %s) RETURNING id""",
         (acao, entidade.strip(), entidade_id, ator_id),
     )
-    return int(cursor.fetchone()[0])
+    return _extrair_id_retorno(cursor.fetchone())
