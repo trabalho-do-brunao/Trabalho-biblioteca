@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app.frontend import configurar_frontend_producao
 from app.routes.auth import exigir_administrador, router as auth_router
+from app.routes.auditoria import router as auditoria_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.demo import router as demo_router
 from app.routes.emprestimos import router as emprestimos_router
@@ -104,6 +105,7 @@ app.include_router(emprestimos_router, dependencies=protecao_admin)
 app.include_router(dashboard_router, dependencies=protecao_admin)
 app.include_router(whatsapp_router, dependencies=protecao_admin)
 app.include_router(relatorios_router, dependencies=protecao_admin)
+app.include_router(auditoria_router, dependencies=protecao_admin)
 
 # Em desenvolvimento o Vite continua em :5173. Na imagem Docker o diretório
 # frontend_dist existe e o mesmo FastAPI passa a entregar a SPA compilada.
