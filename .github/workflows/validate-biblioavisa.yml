@@ -1,0 +1,46 @@
+name: Validate BiblioAvisa
+
+on:
+  pull_request:
+    branches:
+      - integration/v1-next
+      - repositorio-principal
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python syntax
+        run: python -m compileall -q app database scripts
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run test:unit
+      - run: npm run test:quality
+      - run: npm run build
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate AWS Compose without secrets
+        env:
+          DB_PASSWORD: validation-only-not-production
+        run: |
+          touch .env
+          docker compose -f docker-compose.aws.yml config --quiet
