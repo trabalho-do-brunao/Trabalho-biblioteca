@@ -16,6 +16,7 @@ from app.routes.auth import exigir_administrador, router as auth_router
 from app.routes.auditoria import router as auditoria_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.demo import router as demo_router
+from app.routes.diagnostics import router as diagnostics_router
 from app.routes.emprestimos import router as emprestimos_router
 from app.routes.livros import router as livros_router
 from app.routes.relatorios import router as relatorios_router
@@ -103,6 +104,7 @@ app.include_router(usuarios_router, dependencies=protecao_admin)
 app.include_router(livros_router, dependencies=protecao_admin)
 app.include_router(emprestimos_router, dependencies=protecao_admin)
 app.include_router(dashboard_router, dependencies=protecao_admin)
+app.include_router(diagnostics_router, dependencies=protecao_admin)
 app.include_router(whatsapp_router, dependencies=protecao_admin)
 app.include_router(relatorios_router, dependencies=protecao_admin)
 app.include_router(auditoria_router, dependencies=protecao_admin)
