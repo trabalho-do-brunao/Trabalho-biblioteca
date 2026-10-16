@@ -9,6 +9,7 @@ from psycopg2.errors import UniqueViolation
 from psycopg2.extras import RealDictCursor
 
 from app.db import conectar
+from app.repositories.auditoria import registrar_evento_na_transacao
 
 
 class UsuarioDuplicadoError(ValueError):
@@ -107,6 +108,7 @@ def cadastrar_usuario(
                 (nome_limpo, telefone_normalizado, email_normalizado),
             )
             usuario = dict(cursor.fetchone())
+            registrar_evento_na_transacao(cursor, acao="usuario.criado", entidade="usuario", entidade_id=int(usuario["id"]))
 
         conexao.commit()
         return usuario
@@ -152,6 +154,8 @@ def atualizar_usuario(
                 (nome_limpo, telefone_normalizado, email_normalizado, usuario_id),
             )
             registro = cursor.fetchone()
+            if registro:
+                registrar_evento_na_transacao(cursor, acao="usuario.atualizado", entidade="usuario", entidade_id=int(registro["id"]))
 
         conexao.commit()
         return dict(registro) if registro else None
@@ -186,6 +190,8 @@ def definir_usuario_ativo(usuario_id: int, ativo: bool) -> dict[str, object] | N
                 (bool(ativo), usuario_id),
             )
             registro = cursor.fetchone()
+            if registro:
+                registrar_evento_na_transacao(cursor, acao="usuario.status_alterado", entidade="usuario", entidade_id=int(registro["id"]))
         conexao.commit()
         return dict(registro) if registro else None
     except psycopg2.Error as erro:

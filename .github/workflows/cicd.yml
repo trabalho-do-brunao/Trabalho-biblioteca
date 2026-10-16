@@ -86,6 +86,7 @@ jobs:
           DB_USER=postgres
           DB_PASSWORD=postgres
           DB_MAINTENANCE_NAME=postgres
+          BIBLIOAVISA_HTTP_PORT=18080
           EOF
 
       - name: Validar Docker Compose da AWS
@@ -126,28 +127,33 @@ jobs:
           # Reproduz o fluxo real da VM: banco -> estrutura/migrações -> API.
           docker compose -f docker-compose.aws.yml up -d --build db
           docker compose -f docker-compose.aws.yml run --rm api python scripts/init_db.py
-          docker compose -f docker-compose.aws.yml up -d api
+          # Suporta tanto o Compose antigo (API publicada) quanto o novo (Nginx gateway).
+          if docker compose -f docker-compose.aws.yml config --services | grep -qx nginx; then
+            docker compose -f docker-compose.aws.yml up -d nginx
+          else
+            docker compose -f docker-compose.aws.yml up -d api
+          fi
 
           for tentativa in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+            if curl --fail --silent http://127.0.0.1:18080/api/health >/dev/null 2>&1; then
               echo "[OK] API respondeu ao health check pelo Docker Compose."
 
-              if curl --fail --silent http://127.0.0.1:8000/api/auth/registration-status >/dev/null 2>&1; then
+              if curl --fail --silent http://127.0.0.1:18080/api/auth/registration-status >/dev/null 2>&1; then
                 echo "[OK] API acessou o PostgreSQL inicializado pelo Docker Compose."
                 exit 0
               fi
 
               echo "[ERRO] API subiu, mas uma rota que usa PostgreSQL falhou."
               docker compose -f docker-compose.aws.yml ps || true
-              docker compose -f docker-compose.aws.yml logs api db --tail=120 || true
+              docker compose -f docker-compose.aws.yml logs nginx api db --tail=120 || true
               exit 1
             fi
             sleep 1
           done
 
-          echo "[ERRO] API não respondeu ao health check do Docker Compose."
+          echo "[ERRO] Gateway HTTP não respondeu ao health check do Docker Compose."
           docker compose -f docker-compose.aws.yml ps || true
-          docker compose -f docker-compose.aws.yml logs api db --tail=120 || true
+          docker compose -f docker-compose.aws.yml logs nginx api db --tail=120 || true
           exit 1
 
       - name: Encerrar smoke test Docker Compose

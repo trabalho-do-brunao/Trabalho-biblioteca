@@ -1,0 +1,94 @@
+name: Validate BiblioAvisa
+
+on:
+  pull_request:
+    branches:
+      - integration/v1-next
+      - repositorio-principal
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python syntax
+        run: python -m compileall -q app database scripts
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run test:unit
+      - run: npm run test:quality
+      - run: npm run build
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate AWS Compose without secrets
+        env:
+          DB_PASSWORD: validation-only-not-production
+        run: |
+          touch .env
+          docker compose -f docker-compose.aws.yml config --quiet
+
+  nginx-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare isolated test environment
+        run: |
+          cat > .env <<'EOF'
+          DB_NAME=ecf
+          DB_USER=postgres
+          DB_PASSWORD=validation-only-not-production
+          AUTH_COOKIE_SECURE=false
+          BIBLIOAVISA_HTTP_PORT=18080
+          AUTOMACAO_ENABLED=false
+          WHATSAPP_INBOUND_ENABLED=false
+          EOF
+      - name: Start PostgreSQL, API and Nginx
+        run: docker compose -f docker-compose.aws.yml up -d --build db api nginx
+      - name: Verify API through Nginx
+        run: |
+          success=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS -D /tmp/headers http://127.0.0.1:18080/api/health -o /tmp/body; then
+              success=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$success" -ne 1 ]; then
+            docker compose -f docker-compose.aws.yml ps
+            docker compose -f docker-compose.aws.yml logs --no-color nginx api db
+            exit 1
+          fi
+
+          cat /tmp/headers
+          cat /tmp/body
+          grep -qi '^server: nginx' /tmp/headers
+          grep -q '"status":"ok"' /tmp/body
+          grep -q '"service":"BiblioAvisa API"' /tmp/body
+      - name: Show container status
+        if: always()
+        run: docker compose -f docker-compose.aws.yml ps
+      - name: Stop test containers
+        if: always()
+        run: docker compose -f docker-compose.aws.yml down -v
