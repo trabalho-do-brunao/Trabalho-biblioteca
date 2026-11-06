@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   BookOpenCheck,
+  ClipboardList,
   House,
   LogOut,
   MessageCircle,
@@ -20,6 +21,7 @@ const items = [
   { to: '/emprestimos', label: 'Empréstimos', icon: BookOpenCheck },
   { to: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { to: '/relatorios', label: 'Relatórios', icon: BarChart3 },
+  { to: '/auditoria', label: 'Auditoria', icon: ClipboardList },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
