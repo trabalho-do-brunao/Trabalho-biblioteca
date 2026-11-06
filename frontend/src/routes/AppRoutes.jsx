@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from '../auth/ProtectedRoute'
 import AppLayout from '../components/layout/AppLayout'
+import Auditoria from '../pages/Auditoria'
 import Cadastro from '../pages/Cadastro'
 import Configuracoes from '../pages/Configuracoes'
 import Dashboard from '../pages/Dashboard'
@@ -26,6 +27,7 @@ export default function AppRoutes() {
           <Route path="/emprestimos" element={<Emprestimos />} />
           <Route path="/whatsapp" element={<WhatsApp />} />
           <Route path="/relatorios" element={<Relatorios />} />
+          <Route path="/auditoria" element={<Auditoria />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
         </Route>
       </Route>
